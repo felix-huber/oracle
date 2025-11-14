@@ -266,7 +266,13 @@ export async function runOracle(options, deps = {}) {
     log = deps.log ?? console.log,
     write = deps.write ?? ((text) => process.stdout.write(text)),
     now = deps.now ?? (() => performance.now()),
-    clientFactory = deps.clientFactory ?? ((key) => new OpenAI({ apiKey: key })),
+    clientFactory =
+      deps.clientFactory ??
+      ((key) =>
+        new OpenAI({
+          apiKey: key,
+          timeout: 15 * 60 * 1000, // allow up to 15-minute reasoning runs
+        })),
     client = deps.client,
   } = deps;
 
