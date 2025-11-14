@@ -26,7 +26,7 @@ Use `bun run start` if you prefer invoking the script through the package.json s
 ## Features
 
 - **Streaming responses** from GPT-5 Pro or GPT-5.1 (high reasoning) via the Responses API.
-- **Built-in web search tool** enabled by default so answers can cite fresh info (`--no-search` to disable).
+- **Built-in web search tool** is always enabled so answers can cite fresh info without extra flags.
 - **File attachments** with Markdown wrapping plus `--files-report` to see token impact per file.
 - **Preflight checks**: GPT-tokenizer ensures prompts stay within the configured input budget and shows per-file breakdown when you exceed it.
 - **Preview mode** (`--preview`) prints the token counts without calling the API. Add `--preview-json` only when you really need the raw payload dump.
@@ -41,7 +41,6 @@ Use `bun run start` if you prefer invoking the script through the package.json s
 | `-p, --prompt <text>` | **Required for new runs/preview.** User message that kicks off the request. |
 | `-f, --file <path>` | Attach one or more files or directories (repeat the flag or pass a space separated list). Directories are scanned recursively and each file is embedded under a Markdown heading. |
 | `-m, --model <name>` | Choose `gpt-5-pro` (default) or `gpt-5.1`. The latter automatically sets `reasoning.effort` to `high`. |
-| `--search` | Adds the platform-provided `web_search_preview` tool so the model can cite fresh sources (default enabled). Use `--no-search` to disable. |
 | `--files-report` | Print a sorted table of attached files with their token counts and percentage of the input budget (auto-enabled when files exceed the budget). |
 | `--preview` | Print the token budget summary and exit before hitting the API. |
 | `--preview-json` | When combined with `--preview`, also dump the full JSON payload (otherwise only the summary/tokens print). |

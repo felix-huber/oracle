@@ -314,7 +314,7 @@ export async function runOracle(options, deps = {}) {
     modelConfig,
     systemPrompt,
     userPrompt,
-    searchEnabled: options.search,
+    searchEnabled: true,
     maxOutputTokens: options.maxOutput,
   });
 

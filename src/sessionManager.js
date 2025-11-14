@@ -73,7 +73,6 @@ export async function initializeSession(options, cwd) {
       prompt: options.prompt,
       file: options.file ?? [],
       model: options.model,
-      search: options.search,
       maxInput: options.maxInput,
       system: options.system,
       maxOutput: options.maxOutput,

@@ -18,7 +18,6 @@ program
   .option('-p, --prompt <text>', 'User prompt to send to the model.')
   .option('-f, --file <paths...>', 'Paths to files or directories to append to the prompt; repeat or supply a space-separated list.', collectPaths, [])
   .option('-m, --model <model>', 'Model to target (gpt-5-pro | gpt-5.1).', validateModel, 'gpt-5-pro')
-  .option('--search', 'Allow the model to make server-side web_search tool calls.', true)
   .option('--files-report', 'Show token usage per attached file (also prints automatically when files exceed the token budget).', false)
   .option('--preview', 'Preview the request and token usage without making an API call.', false)
   .option('--preview-json', 'When using --preview, also dump the full JSON payload.', false)
