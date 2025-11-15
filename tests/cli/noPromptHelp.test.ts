@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'vitest';
-import { describe, expect, test } from 'vitest';
 import { shouldRequirePrompt } from '../../src/cli/promptRequirement.js';
 import { resolvePreviewMode } from '../../src/cli/options.js';
 
