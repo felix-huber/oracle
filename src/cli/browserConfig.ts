@@ -53,3 +53,15 @@ export function buildBrowserConfig(options: BrowserFlagOptions): BrowserSessionC
 export function mapModelToBrowserLabel(model: ModelName): string {
   return BROWSER_MODEL_LABELS[model] ?? DEFAULT_MODEL_TARGET;
 }
+
+export function resolveBrowserModelLabel(input: string | undefined, model: ModelName): string {
+  const trimmed = input?.trim?.() ?? '';
+  if (!trimmed) {
+    return mapModelToBrowserLabel(model);
+  }
+  const normalizedInput = trimmed.toLowerCase();
+  if (normalizedInput === model.toLowerCase()) {
+    return mapModelToBrowserLabel(model);
+  }
+  return trimmed;
+}

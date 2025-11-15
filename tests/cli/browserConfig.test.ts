@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { buildBrowserConfig } from '../../src/cli/browserConfig.ts';
+import { buildBrowserConfig, resolveBrowserModelLabel } from '../../src/cli/browserConfig.ts';
 
 describe('buildBrowserConfig', () => {
   test('uses defaults when optional flags omitted', () => {
@@ -73,5 +73,20 @@ describe('buildBrowserConfig', () => {
       browserModelLabel: '  ChatGPT 5.1 Instant  ',
     });
     expect(config.desiredModel).toBe('ChatGPT 5.1 Instant');
+  });
+});
+
+describe('resolveBrowserModelLabel', () => {
+  test('returns canonical ChatGPT label when CLI value matches API model', () => {
+    expect(resolveBrowserModelLabel('gpt-5-pro', 'gpt-5-pro')).toBe('GPT-5 Pro');
+    expect(resolveBrowserModelLabel('GPT-5.1', 'gpt-5.1')).toBe('ChatGPT 5.1');
+  });
+
+  test('falls back to canonical label when input is empty', () => {
+    expect(resolveBrowserModelLabel('', 'gpt-5.1')).toBe('ChatGPT 5.1');
+  });
+
+  test('preserves descriptive labels to target alternate picker entries', () => {
+    expect(resolveBrowserModelLabel('ChatGPT 5.1 Instant', 'gpt-5.1')).toBe('ChatGPT 5.1 Instant');
   });
 });
