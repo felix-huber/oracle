@@ -15,6 +15,10 @@ OPENAI_API_KEY=sk-... pnpm run oracle -- \
 # Browser path (no API key needed)
 pnpm run oracle -- --engine browser --prompt "Summarize the risk register" \
   --file docs/risk-register.md docs/risk-matrix.md
+
+# Globs/exclusions (skip tests, only TypeScript sources)
+pnpm run oracle -- --prompt "Review the TS data layer" \
+  --file "src/**/*.ts" --file "!src/**/*.test.ts"
 ```
 
 Prefer the compiled binary? `pnpm run build && node dist/bin/oracle.js --prompt ...` works too. Whether you hit the API or the browser, attach the files/directories that explain the issue and run `--files-report` to stay within the ~196k-token window (legacy `--browser` still works but is deprecated in favor of `--engine browser`).

@@ -145,6 +145,19 @@ program
   .option('--heartbeat <seconds>', 'Emit periodic in-progress updates (0 to disable).', parseHeartbeatOption, 30)
   .showHelpAfterError('(use --help for usage)');
 
+program.addHelpText(
+  'after',
+  `
+Examples:
+  # Quick API run with two files
+  oracle --prompt "Summarize the risk register" --file docs/risk-register.md docs/risk-matrix.md
+
+  # Browser run (no API key) + globbed TypeScript sources, excluding tests
+  oracle --engine browser --prompt "Review the TS data layer" \\
+    --file "src/**/*.ts" --file "!src/**/*.test.ts"
+`,
+);
+
 const sessionCommand = program
   .command('session [id]')
   .description('Attach to a stored session or list recent sessions when no ID is provided.')
