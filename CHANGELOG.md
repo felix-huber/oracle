@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.0.6 — 2025-11-15
+
+### Changed
+- Colorized live run header (model/tokens/files) when a rich TTY is available.
+- Added a blank line before the `Answer:` prefix for readability.
+- Masked API key logging now shows first/last 4 characters (e.g., `OPENAI_API_KEY=sk-p****qfAA`).
+- Suppressed duplicate session header on reattach and removed repeated background response IDs in heartbeats.
+
 ## 1.0.5 — 2025-11-15
 
 ### Added
