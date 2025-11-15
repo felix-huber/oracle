@@ -3,10 +3,12 @@ import OpenAI from 'openai';
 import { countTokens as countTokensGpt5 } from 'gpt-tokenizer/model/gpt-5';
 import { countTokens as countTokensGpt5Pro } from 'gpt-tokenizer/model/gpt-5-pro';
 import fs from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { performance } from 'node:perf_hooks';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 type TokenizerFn = (input: unknown, options?: Record<string, unknown>) => number;
 
@@ -181,8 +183,26 @@ export interface OracleResponse {
   output?: ResponseOutputItem[];
 }
 
+const pkgPath = resolvePackageJsonPath(import.meta.url);
 const require = createRequire(import.meta.url);
-const pkg = require('../package.json');
+const pkg = require(pkgPath);
+
+function resolvePackageJsonPath(moduleUrl: string): string {
+  const startDir = path.dirname(fileURLToPath(moduleUrl));
+  return resolveFromDir(startDir);
+
+  function resolveFromDir(dir: string): string {
+    const candidate = path.join(dir, 'package.json');
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parentDir = path.dirname(dir);
+    if (parentDir === dir) {
+      throw new Error('Unable to locate package.json from module path.');
+    }
+    return resolveFromDir(parentDir);
+  }
+}
 
 export const MODEL_CONFIGS: Record<ModelName, ModelConfig> = {
   'gpt-5-pro': {
