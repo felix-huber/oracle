@@ -21,7 +21,7 @@ pnpm install
 pnpm start -- --prompt "Summarize the risk register" \
   --file docs/risk-register.md docs/risk-matrix.md
 # or
-node ./bin/oracle.js --prompt "Summarize the risk register" \
+node ./bin/oracle-cli.js --prompt "Summarize the risk register" \
   --file docs/risk-register.md docs/risk-matrix.md
 ```
 
@@ -45,6 +45,7 @@ Use `pnpm oracle` if you prefer the alias. Always attach the files (or directori
 | `-p, --prompt <text>` | **Required for new runs/preview.** User message that kicks off the request. |
 | `-f, --file <path>` | Attach one or more files or directories (repeat the flag or pass a space separated list). Directories are scanned recursively and each file is embedded under a Markdown heading. |
 | `-m, --model <name>` | Choose `gpt-5-pro` (default) or `gpt-5.1`. The latter automatically sets `reasoning.effort` to `high`. |
+| `--slug <words>` | Provide a custom 3–5 word slug so session IDs stay memorable (`release-risk-review`, etc.). Duplicates get `-2`, `-3`, … |
 | `--files-report` | Print a sorted table of attached files with their token counts and percentage of the input budget (auto-enabled when files exceed the budget). |
 | `--preview` | Print the token budget summary and exit before hitting the API. |
 | `--preview-json` | When combined with `--preview`, also dump the full JSON payload (otherwise only the summary/tokens print). |
@@ -71,7 +72,7 @@ Every run ends with a stats block showing elapsed time, actual/estimated tokens,
 
 ## Sessions & Background Execution
 
-Oracle writes every non-preview run to `~/.oracle/sessions/<timestamp>-<slug>` and spawns a detached Bun process so the request keeps streaming even if the originating shell exits.
+Oracle writes every non-preview run to `~/.oracle/sessions/<slug>` (add `--slug "release-risk-review"` to pick your own 3–5 word slug) and spawns a detached Bun process so the request keeps streaming even if the originating shell exits. If a slug already exists, Oracle appends `-2`, `-3`, and so on to keep directories unique.
 
 Commands:
 

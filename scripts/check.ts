@@ -4,7 +4,7 @@ import process from 'node:process';
 type BunBuildConfig = Parameters<typeof Bun.build>[0] & { write?: boolean };
 
 const buildConfig: BunBuildConfig = {
-  entrypoints: ['./bin/oracle.js'],
+  entrypoints: ['./bin/oracle-cli.js'],
   outdir: './.bun-check',
   target: 'bun',
   minify: false,

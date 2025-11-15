@@ -36,24 +36,20 @@ describe('session storage setup', () => {
 });
 
 describe('session identifiers', () => {
-  test('createSessionId slugifies prompts and adds timestamp prefix', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2025-02-03T04:05:06.789Z'));
+  test('createSessionId slugifies prompts without timestamps', () => {
     const id = sessionModule.createSessionId('  Hello, WORLD??? -- Example ');
-    vi.useRealTimers();
-    const expectedPrefix = '2025-02-03-04-05-06';
-    expect(id.startsWith(`${expectedPrefix}-`)).toBe(true);
-    const slug = id.slice(expectedPrefix.length + 1);
-    expect(slug).toBe('hello-world-example');
+    expect(id).toBe('hello-world-example');
   });
 
-  test('createSessionId preserves whole words in slug up to limit', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2025-02-03T04:05:06Z'));
+  test('createSessionId preserves whole words up to max limit', () => {
     const id = sessionModule.createSessionId('Alpha beta gamma delta epsilon zeta');
-    vi.useRealTimers();
-    const slug = id.slice('2025-02-03-04-05-06'.length + 1);
-    expect(slug).toBe('alpha-beta-gamma-delta-epsilon');
+    expect(id).toBe('alpha-beta-gamma-delta-epsilon');
+  });
+
+  test('createSessionId accepts custom slugs and enforces word bounds', () => {
+    const id = sessionModule.createSessionId('ignored', 'Launch plan QA sync ready??');
+    expect(id).toBe('launch-plan-qa-sync-ready');
+    expect(() => sessionModule.createSessionId('ignored', 'only two')).toThrow(/Custom slug/i);
   });
 });
 
@@ -113,6 +109,19 @@ describe('session lifecycle', () => {
 
   test('readSessionLog falls back to empty string when no log exists', async () => {
     expect(await sessionModule.readSessionLog('missing')).toBe('');
+  });
+
+  test('initializeSession appends numeric suffix when slug already exists', async () => {
+    const first = await sessionModule.initializeSession(
+      { prompt: 'Duplicate slug please', model: 'gpt-5-pro', slug: 'alpha beta gamma' },
+      '/tmp/cwd',
+    );
+    const second = await sessionModule.initializeSession(
+      { prompt: 'Duplicate slug please again', model: 'gpt-5-pro', slug: 'alpha beta gamma' },
+      '/tmp/cwd',
+    );
+    expect(first.id).toBe('alpha-beta-gamma');
+    expect(second.id).toBe('alpha-beta-gamma-2');
   });
 });
 

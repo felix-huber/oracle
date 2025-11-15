@@ -90,15 +90,33 @@ program
   .addOption(new Option('--exec-session <id>').hideHelp())
   .option('--render-markdown', 'Emit the assembled markdown bundle for prompt + files and exit.', false)
   .option('--browser', 'Run the prompt via the ChatGPT web UI (Chrome automation).', false)
-  .option('--browser-chrome-profile <name>', 'Chrome profile name/path for cookie reuse.')
-  .option('--browser-chrome-path <path>', 'Explicit Chrome or Chromium executable path.')
-  .option('--browser-url <url>', `Override the ChatGPT URL (default ${CHATGPT_URL}).`)
-  .option('--browser-timeout <ms|s|m>', 'Maximum time to wait for an answer (default 900s).')
-  .option('--browser-input-timeout <ms|s|m>', 'Maximum time to wait for the prompt textarea (default 30s).')
-  .option('--browser-no-cookie-sync', 'Skip copying cookies from Chrome.', false)
-  .option('--browser-headless', 'Launch Chrome in headless mode.', false)
-  .option('--browser-hide-window', 'Hide the Chrome window after launch (macOS headful only).', false)
-  .option('--browser-keep-browser', 'Keep Chrome running after completion.', false)
+  .addOption(
+    new Option('--search <mode>', 'Set server-side search behavior (on/off).')
+      .argParser(parseSearchOption)
+      .hideHelp(),
+  )
+  .addOption(
+    new Option('--max-input <tokens>', 'Override the input token budget for the selected model.')
+      .argParser(parseIntOption)
+      .hideHelp(),
+  )
+  .addOption(
+    new Option('--max-output <tokens>', 'Override the max output tokens for the selected model.')
+      .argParser(parseIntOption)
+      .hideHelp(),
+  )
+  .addOption(new Option('--browser-chrome-profile <name>', 'Chrome profile name/path for cookie reuse.').hideHelp())
+  .addOption(new Option('--browser-chrome-path <path>', 'Explicit Chrome or Chromium executable path.').hideHelp())
+  .addOption(new Option('--browser-url <url>', `Override the ChatGPT URL (default ${CHATGPT_URL}).`).hideHelp())
+  .addOption(new Option('--browser-timeout <ms|s|m>', 'Maximum time to wait for an answer (default 900s).').hideHelp())
+  .addOption(
+    new Option('--browser-input-timeout <ms|s|m>', 'Maximum time to wait for the prompt textarea (default 30s).').hideHelp(),
+  )
+  .addOption(new Option('--browser-no-cookie-sync', 'Skip copying cookies from Chrome.').hideHelp())
+  .addOption(new Option('--browser-headless', 'Launch Chrome in headless mode.').hideHelp())
+  .addOption(new Option('--browser-hide-window', 'Hide the Chrome window after launch (macOS headful only).').hideHelp())
+  .addOption(new Option('--browser-keep-browser', 'Keep Chrome running after completion.').hideHelp())
+  .option('--debug-help', 'Show the advanced/debug option set and exit.', false)
   .showHelpAfterError('(use --help for usage)');
 
 program
