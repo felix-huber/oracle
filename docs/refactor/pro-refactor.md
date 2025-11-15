@@ -5,7 +5,7 @@ Comprehensive refactor roadmap following GPT-5 Pro's review. Each section lists 
 ## Current Status
 
 - ✅ Section 1 implemented (glob filtering + 1 MB hard cap, CLI/docs updated, tests covering ignore/size handling).
-- ⌛ Section 2 (error semantics) is the next major focus.
+- ✅ Section 2 implemented (typed user errors, session metadata/logging updated, browser runner wraps automation failures).
 
 ---
 
