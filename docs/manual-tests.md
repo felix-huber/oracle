@@ -10,7 +10,8 @@ selection, markdown capture, etc.).
 - `pnpm install` already completed, and native deps rebuilt as needed via  
   `PYTHON=/usr/bin/python3 npm_config_build_from_source=1 pnpm rebuild chrome-cookies-secure sqlite3 keytar --workspace-root`.
 - Headful display access (no `--browser-headless`).
-- Ensure no Chrome instances are force-terminated mid-run; let Oracle clean up.
+- When debugging, add `--browser-keep-browser` so Chrome stays open after Oracle exits, then connect with `pnpm exec tsx scripts/browser-tools.ts ...` (screenshot, eval, DOM picker, etc.).
+- Ensure no Chrome instances are force-terminated mid-run; let Oracle clean up once you’re done capturing state.
 
 ## Test Cases
 
@@ -67,12 +68,13 @@ This mirrors Mario Zechner’s “What if you don’t need MCP?” technique and
      - Session log (`oracle session <id>`) should show the assistant markdown (confirm via `grep -n '```' ~/.oracle/sessions/<id>/output.log`).
 
 4. **Stop Button Handling**
-   - Start a long prompt (`"Write a detailed essay about browsers"`) and once ChatGPT responds, manually click “Stop generating” inside Chrome.
-   - Oracle should detect the assistant message (partial) and still store the markdown.
+  - Start a long prompt (`"Write a detailed essay about browsers"`) and once ChatGPT responds, manually click “Stop generating” inside Chrome.
+  - Oracle should detect the assistant message (partial) and still store the markdown.
 
 5. **Override Flag**
-   - Run with `--browser-allow-cookie-errors` while intentionally breaking bindings.
-   - Confirm log shows `Cookie sync failed (continuing with override)` and the run proceeds headless/logged-out.
+  - Run with `--browser-allow-cookie-errors` while intentionally breaking bindings.
+  - Confirm log shows `Cookie sync failed (continuing with override)` and the run proceeds headless/logged-out.
+- Remember: the browser composer now sends only the user instructions plus a short “System instructions:” prefix. If you see `[SYSTEM]` brackets or the entire bundle in the ChatGPT composer, something regressed in `assembleBrowserPrompt` and you should stop and file a bug.
 
 ## Post-Run Validation
 
