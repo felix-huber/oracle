@@ -11,6 +11,10 @@ const markedWithTerminal = new Marked();
 const parser = new Parser(markedWithTerminal.defaults);
 // Give terminal renderer a parser so its helpers (heading, link, etc.) can call parseInline.
 (terminalRenderer as unknown as { parser: Parser }).parser = parser;
+// Also set on the prototype so even if marked rebinds `this`, parser/options still exist.
+(TerminalRenderer as unknown as { prototype: { parser?: Parser; options?: unknown } }).prototype.parser ??= parser;
+(TerminalRenderer as unknown as { prototype: { parser?: Parser; options?: unknown } }).prototype.options ??=
+  (terminalRenderer as unknown as { options?: unknown }).options;
 
 // Marked v15 validates renderer keys; supply only the supported render functions.
 const allowedKeys = [
@@ -43,6 +47,10 @@ for (const key of allowedKeys) {
     filteredRenderer[key] = (fn as (...args: unknown[]) => unknown).bind(terminalRenderer);
   }
 }
+// Preserve renderer options (sanitize, reflowText, etc.) for marked-terminal helpers.
+filteredRenderer.options = (terminalRenderer as unknown as { options?: unknown }).options ?? {};
+// Attach parser helpers expected by marked-terminal during rendering.
+filteredRenderer.parser = parser;
 
 markedWithTerminal.use({ renderer: filteredRenderer });
 
