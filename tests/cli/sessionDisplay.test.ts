@@ -19,6 +19,7 @@ vi.mock('../../src/sessionManager.ts', () => {
     wait: vi.fn(),
     listSessionsMetadata: vi.fn(),
     filterSessionsByRange: vi.fn(),
+    // biome-ignore lint/style/useNamingConvention: mimic exported constant name
     SESSIONS_DIR: '/tmp/sessions',
   };
 });
@@ -31,6 +32,9 @@ vi.mock('../../src/cli/markdownRenderer.ts', () => {
 
 const sessionManagerMock = await import('../../src/sessionManager.ts');
 const markdownMock = await import('../../src/cli/markdownRenderer.ts');
+const renderMarkdownMock = markdownMock.renderMarkdownAnsi as unknown as { mockClear?: () => void };
+const readSessionMetadataMock = sessionManagerMock.readSessionMetadata as unknown as ReturnType<typeof vi.fn>;
+const readSessionLogMock = sessionManagerMock.readSessionLog as unknown as ReturnType<typeof vi.fn>;
 
 const originalIsTty = process.stdout.isTTY;
 const originalChalkLevel = chalk.level;
@@ -131,12 +135,12 @@ describe('attachSession rendering', () => {
   };
 
   beforeEach(() => {
-    (markdownMock.renderMarkdownAnsi as any)?.mockClear?.();
+    renderMarkdownMock?.mockClear?.();
   });
 
   test('renders markdown when requested and rich tty', async () => {
-    sessionManagerMock.readSessionMetadata.mockResolvedValue(baseMeta);
-    sessionManagerMock.readSessionLog.mockResolvedValue('Answer:\nhello *world*');
+    readSessionMetadataMock.mockResolvedValue(baseMeta);
+    readSessionLogMock.mockResolvedValue('Answer:\nhello *world*');
     const writeSpy = vi.spyOn(process.stdout, 'write');
 
     await attachSession('sess', { renderMarkdown: true });
@@ -146,8 +150,8 @@ describe('attachSession rendering', () => {
   });
 
   test('skips render when too large', async () => {
-    sessionManagerMock.readSessionMetadata.mockResolvedValue(baseMeta);
-    sessionManagerMock.readSessionLog.mockResolvedValue('A'.repeat(210_000));
+    readSessionMetadataMock.mockResolvedValue(baseMeta);
+    readSessionLogMock.mockResolvedValue('A'.repeat(210_000));
     const writeSpy = vi.spyOn(process.stdout, 'write');
 
     await attachSession('sess', { renderMarkdown: true });

@@ -11,6 +11,7 @@ export interface StatusOptions extends OptionValues {
   clean?: boolean;
   render?: boolean;
   renderMarkdown?: boolean;
+  verboseRender?: boolean;
 }
 
 interface SessionCommandDependencies {
@@ -35,7 +36,7 @@ export async function handleSessionCommand(
   deps: SessionCommandDependencies = defaultDependencies,
 ): Promise<void> {
   const sessionOptions = command.opts<StatusOptions>();
-  if ((sessionOptions as any).verboseRender) {
+  if (sessionOptions.verboseRender) {
     process.env.ORACLE_VERBOSE_RENDER = '1';
   }
   const clearRequested = Boolean(sessionOptions.clear || sessionOptions.clean);

@@ -37,7 +37,7 @@ import { attachSession, showStatus } from '../src/cli/sessionDisplay.js';
 import type { ShowStatusOptions } from '../src/cli/sessionDisplay.js';
 import { handleSessionCommand, type StatusOptions, formatSessionCleanupMessage } from '../src/cli/sessionCommand.js';
 import { isErrorLogged } from '../src/cli/errorUtils.js';
-import { handleStatusFlag } from '../src/cli/rootAlias.js';
+import { handleSessionAlias, handleStatusFlag } from '../src/cli/rootAlias.js';
 import { getCliVersion } from '../src/version.js';
 import { runDryRunSummary } from '../src/cli/dryRun.js';
 
@@ -142,6 +142,7 @@ program
       .preset('summary'),
   )
   .addOption(new Option('--exec-session <id>').hideHelp())
+  .addOption(new Option('--session <id>').hideHelp())
   .addOption(new Option('--status', 'Show stored sessions (alias for `oracle status`).').default(false).hideHelp())
   .option('--render-markdown', 'Emit the assembled markdown bundle for prompt + files and exit.', false)
   .option('--verbose-render', 'Show render/TTY diagnostics when replaying sessions.', false)
@@ -360,8 +361,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     return;
   }
 
-  if (options.session) {
-    await attachSession(options.session);
+  if (await handleSessionAlias(options, { attachSession })) {
     return;
   }
 
