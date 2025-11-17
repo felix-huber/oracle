@@ -43,21 +43,23 @@ oracle session <id>                 # replay a run locally
 
 ## How do I integrate this?
 
-- **One-liner in CI** — `OPENAI_API_KEY=sk-... npx -y @steipete/oracle --prompt "Smoke-check latest PR" --file src/ docs/ --preview summary` (add to your pipeline as a non-blocking report step).
-- **Package script** — In `package.json`: `"oracle": "oracle --prompt \"Review the diff\" --file ."` then run `OPENAI_API_KEY=... pnpm oracle`.
-- **MCP server alternative** — Prefer MCP? Use the bundled stdio server bin `oracle-mcp` (also via `pnpm mcp`) which exposes `consult` and `sessions` tools plus read-only session resources; see `docs/mcp.md` for full tool/resource schemas and behavior.
-- **MCP quick config examples**
-  - Cursor / VS Code MCP entry (stdio):  
-    ```json
-    {
-      "name": "oracle",
-      "type": "stdio",
-      "command": "oracle-mcp",
-      "args": []
-    }
-    ```
-  - Claude Code / mcporter snippet: set `command: "oracle-mcp"` (no args). The server runs over stdio; no auth needed beyond your existing `OPENAI_API_KEY`/browser cookies the CLI already uses. See `docs/mcp.md` for tool/resource details.
-  - If you don’t want to export `OPENAI_API_KEY`, pass it inline: `OPENAI_API_KEY=sk-... oracle -p "Quick check" --file src/` or `OPENAI_API_KEY=sk-... pnpm mcp`.
+**CLI** (direct calls; great for CI or scripted tasks)
+- One-liner in CI: `OPENAI_API_KEY=sk-... npx -y @steipete/oracle --prompt "Smoke-check latest PR" --file src/ docs/ --preview summary`.
+- Package script: add `"oracle": "oracle --prompt \"Review the diff\" --file ."` to `package.json`, then run `OPENAI_API_KEY=... pnpm oracle`.
+- Don’t want to export the key? Inline works: `OPENAI_API_KEY=sk-... oracle -p "Quick check" --file src/`.
+
+**MCP** (tools + resources; mix-and-match with the CLI sessions)
+- Run the bundled stdio server: `pnpm mcp` (or `oracle-mcp`) after `pnpm build`. Tools: `consult`, `sessions`; resources: `oracle-session://{id}/{metadata|log|request}`. Details in `docs/mcp.md`.
+- mcporter config (stdio):
+  ```json
+  {
+    "name": "oracle",
+    "type": "stdio",
+    "command": "oracle-mcp",
+    "args": []
+  }
+  ```
+- You can call the MCP tools against sessions created by the CLI (shared `~/.oracle/sessions`), and vice versa.
 
 ## Highlights
 

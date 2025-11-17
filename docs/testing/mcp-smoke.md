@@ -42,3 +42,5 @@ Commands
      --config config/mcporter.json
    ```
    Uses a built-in browserConfig (ChatGPT URL + cookie sync) and the provided model label for the picker (heads-up: if the ChatGPT UI renames the model label, this may need an update).
+
+See `docs/mcp.md` for full tool/resource schemas and behavior.
