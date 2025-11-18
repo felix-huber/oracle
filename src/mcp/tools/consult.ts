@@ -7,8 +7,21 @@ import {
   createSessionLogWriter,
   initializeSession,
   readSessionMetadata,
+  readSessionLog,
   type BrowserSessionConfig,
 } from '../../sessionManager.js';
+
+async function readSessionLogTail(sessionId: string, maxBytes: number): Promise<string | null> {
+  try {
+    const log = await readSessionLog(sessionId);
+    if (log.length <= maxBytes) {
+      return log;
+    }
+    return log.slice(-maxBytes);
+  } catch {
+    return null;
+  }
+}
 import { performSessionRun } from '../../cli/sessionRunner.js';
 import { CHATGPT_URL } from '../../browser/constants.js';
 import { consultInputSchema } from '../types.js';
@@ -116,13 +129,11 @@ export function registerConsultTool(server: McpServer): void {
       const log = (line?: string): void => {
         logWriter.logLine(line);
         if (line !== undefined) {
-          output += `${line}\n`;
           sendLog(line);
         }
       };
       const write = (chunk: string): boolean => {
         logWriter.writeChunk(chunk);
-        output += chunk;
         sendLog(chunk, 'debug');
         return true;
       };
@@ -157,15 +168,16 @@ export function registerConsultTool(server: McpServer): void {
 
       try {
         const finalMeta = (await readSessionMetadata(sessionMeta.id)) ?? sessionMeta;
+        const summary = `Session ${sessionMeta.id} (${finalMeta.status})`;
+        const logTail = await readSessionLogTail(sessionMeta.id, 4000);
         return {
           content: textContent(
-            `Session ${sessionMeta.id} (${finalMeta.status})\n${output || '(no output captured)'}`
-              .trim(),
+            [summary, logTail || '(log empty)'].join('\n').trim(),
           ),
           structuredContent: {
             sessionId: sessionMeta.id,
             status: finalMeta.status,
-            output,
+            output: logTail ?? '',
           },
         };
       } catch (error) {
