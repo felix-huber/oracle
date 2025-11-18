@@ -60,7 +60,7 @@ describe('askOracleFlow', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
     const config: UserConfig = {};
-    await tui.askOracleFlow('1.1.0', config);
+    await tui.askOracleFlow('1.2.0', config);
 
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Cancelled'));
     expect(performSessionRunMock).not.toHaveBeenCalled();
@@ -75,7 +75,7 @@ describe('askOracleFlow', () => {
     });
 
     const config: UserConfig = {};
-    await tui.askOracleFlow('1.1.0', config);
+    await tui.askOracleFlow('1.2.0', config);
 
     expect(ensureSessionStorageMock).toHaveBeenCalled();
     expect(initializeSessionMock).toHaveBeenCalledWith(

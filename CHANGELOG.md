@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.2.0 — unreleased
+## 1.2.0 — 2025-11-18
 
 ### Added
 - `oracle-mcp` stdio server (bin) with `consult` and `sessions` tools plus read-only session resources at `oracle-session://{id}/{metadata|log|request}`.
