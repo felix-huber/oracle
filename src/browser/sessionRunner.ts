@@ -109,7 +109,8 @@ export async function runBrowserSessionExecution(
     totalTokens: promptArtifacts.estimatedInputTokens + browserResult.answerTokens,
   };
   const tokensDisplay = `${usage.inputTokens}/${usage.outputTokens}/${usage.reasoningTokens}/${usage.totalTokens}`;
-  const statsParts = [`${runOptions.model}[browser]`, `tok(i/o/r/t)=${tokensDisplay}`];
+  const tokensLabel = runOptions.verbose ? 'tokens (input/output/reasoning/total)' : 'tok(i/o/r/t)';
+  const statsParts = [`${runOptions.model}[browser]`, `${tokensLabel}=${tokensDisplay}`];
   if (runOptions.file && runOptions.file.length > 0) {
     statsParts.push(`files=${runOptions.file.length}`);
   }

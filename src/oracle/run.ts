@@ -365,7 +365,8 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
   const tokensDisplay = [inputTokens, outputTokens, reasoningTokens, totalTokens]
     .map((value, index) => formatTokenValue(value, usage, index))
     .join('/');
-  statsParts.push(`tok(i/o/r/t)=${tokensDisplay}`);
+  const tokensLabel = options.verbose ? 'tokens (input/output/reasoning/total)' : 'tok(i/o/r/t)';
+  statsParts.push(`${tokensLabel}=${tokensDisplay}`);
   const actualInput = usage.input_tokens;
   if (actualInput !== undefined) {
     const delta = actualInput - estimatedInputTokens;
