@@ -89,6 +89,7 @@ Put per-user defaults in `~/.oracle/config.json` (parsed as JSON5, so comments/t
 | `--files-report` | Print per-file token usage. |
 | `--preview [summary\|json\|full]` | Inspect the request without sending. |
 | `--render-markdown` | Print the assembled `[SYSTEM]/[USER]/[FILE]` bundle. |
+| `--wait` / `--no-wait` | Block until completion. Default: `wait` for gpt-5.1/browser; `no-wait` for gpt-5-pro API (reattach later). |
 | `-v, --verbose` | Extra logging (also surfaces advanced flags with `--help`). |
 
 More knobs (`--max-input`, cookie sync controls for browser mode, etc.) live behind `oracle --help --verbose`.
@@ -99,6 +100,8 @@ Every non-preview run writes to `~/.oracle/sessions/<slug>` with usage, cost hin
 Add `--render` (alias `--render-markdown`) when attaching to pretty-print the stored markdown if your terminal supports color; falls back to raw text otherwise.
 
 **Recommendation:** Prefer the API engine when you have an API key (`--engine api` or just set `OPENAI_API_KEY`). The API delivers more reliable results and supports longer, uninterrupted runs than the browser engine in most cases.
+
+**Wait vs no-wait:** gpt-5-pro API runs default to detaching (shows a reattach hint); add `--wait` to stay attached. gpt-5.1 and browser runs block by default. You can reattach anytime via `oracle session <id>`.
 
 ## Testing
 
