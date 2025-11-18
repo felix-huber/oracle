@@ -15,8 +15,6 @@ To use Azure OpenAI, you need to configure the client to use the Azure-specific 
 export AZURE_OPENAI_ENDPOINT="https://your-resource-name.openai.azure.com/"
 export AZURE_OPENAI_API_KEY="your-azure-api-key"
 export AZURE_OPENAI_API_VERSION="2024-02-15-preview"
-# Optional: Map the Oracle model name to your Azure deployment name
-export AZURE_OPENAI_DEPLOYMENT="gpt-4-turbo" 
 ```
 
 When `AZURE_OPENAI_ENDPOINT` is detected, Oracle automatically switches to the Azure client.
