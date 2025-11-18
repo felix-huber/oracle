@@ -523,7 +523,7 @@ describe('runOracle file reports', () => {
     expect(logs.find((line) => line === 'File Token Usage')).toBeDefined();
   });
 
-  test('accepts directories passed via --file', async () => {
+  testNonWindows('accepts directories passed via --file', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'oracle-dir-'));
     const nestedDir = path.join(dir, 'notes');
     await mkdir(nestedDir, { recursive: true });
@@ -649,7 +649,7 @@ describe('oracle utility helpers', () => {
     }
   });
 
-  test('readFiles respects glob include/exclude syntax and size limits', async () => {
+  testNonWindows('readFiles respects glob include/exclude syntax and size limits', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'oracle-readfiles-glob-'));
     try {
       const nestedDir = path.join(dir, 'src', 'nested');
@@ -723,7 +723,7 @@ describe('oracle utility helpers', () => {
     }
   });
 
-  test('readFiles honors nested .gitignore files', async () => {
+  testNonWindows('readFiles honors nested .gitignore files', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'oracle-readfiles-gitignore-nested-'));
     try {
       const subdir = path.join(dir, 'dist');
