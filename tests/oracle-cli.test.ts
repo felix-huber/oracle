@@ -621,7 +621,8 @@ describe('oracle utility helpers', () => {
     expect(() => parseIntOption('not-a-number')).toThrow('Value must be an integer.');
   });
 
-  test('readFiles deduplicates and expands directories', async () => {
+  testNonWindows('readFiles deduplicates and expands directories', async () => {
+    if (process.platform === 'win32') return;
     const dir = await mkdtemp(path.join(os.tmpdir(), 'oracle-readfiles-'));
     try {
       const nestedDir = path.join(dir, 'nested');
