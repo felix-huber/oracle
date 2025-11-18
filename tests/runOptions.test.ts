@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveRunOptionsFromConfig } from '../src/cli/runOptions.js';
+import { estimateRequestTokens } from '../src/oracle/tokenEstimate.js';
+import { MODEL_CONFIGS } from '../src/oracle/config.js';
 
 describe('resolveRunOptionsFromConfig', () => {
   const basePrompt = 'Hello';
@@ -61,5 +63,39 @@ describe('resolveRunOptionsFromConfig', () => {
     });
     expect(runOptions.filesReport).toBe(true);
     expect(runOptions.background).toBe(false);
+  });
+});
+
+describe('estimateRequestTokens', () => {
+  const modelConfig = MODEL_CONFIGS['gpt-5.1'];
+
+  it('includes instructions, input text, tools, reasoning, background/store, plus buffer', () => {
+    const request = {
+      model: 'gpt-5.1',
+      instructions: 'sys',
+      input: [
+        {
+          role: 'user',
+          content: [{ type: 'input_text', text: 'hello world' }],
+        },
+      ],
+      tools: [{ type: 'web_search_preview' }],
+      reasoning: { effort: 'high' },
+      background: true,
+      store: true,
+    };
+    const estimate = estimateRequestTokens(request as any, modelConfig, 10);
+    // Rough sanity: base tokenizer on text parts should be > 0; buffer ensures > base.
+    expect(estimate).toBeGreaterThan(10);
+  });
+
+  it('adds buffer even with minimal input', () => {
+    const request = {
+      model: 'gpt-5.1',
+      instructions: 'a',
+      input: [{ role: 'user', content: [{ type: 'input_text', text: 'b' }] }],
+    };
+    const estimate = estimateRequestTokens(request as any, modelConfig, 50);
+    expect(estimate).toBeGreaterThanOrEqual(50);
   });
 });

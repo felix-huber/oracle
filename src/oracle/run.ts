@@ -18,6 +18,7 @@ import type {
 import { DEFAULT_SYSTEM_PROMPT, MODEL_CONFIGS, TOKENIZER_OPTIONS } from './config.js';
 import { readFiles } from './files.js';
 import { buildPrompt, buildRequestBody } from './request.js';
+import { estimateRequestTokens } from './tokenEstimate.js';
 import { formatElapsed, formatUSD } from './format.js';
 import { getFileTokenStats, printFileTokenStats } from './tokenStats.js';
 import {
@@ -122,12 +123,6 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
 
   const systemPrompt = options.system?.trim() || DEFAULT_SYSTEM_PROMPT;
   const promptWithFiles = buildPrompt(options.prompt, files, cwd);
-  const tokenizerInput = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: promptWithFiles },
-  ];
-  const estimatedInputTokens = modelConfig.tokenizer(tokenizerInput, TOKENIZER_OPTIONS);
-  logVerbose(`Estimated tokens (prompt + files): ${estimatedInputTokens.toLocaleString()}`);
   const fileCount = files.length;
   const cliVersion = getCliVersion();
   const richTty = process.stdout.isTTY && chalk.level > 0;
@@ -163,6 +158,9 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
     background: useBackground,
     storeResponse: useBackground,
   });
+
+  const estimatedInputTokens = estimateRequestTokens(requestBody, modelConfig);
+  logVerbose(`Estimated tokens (request body): ${estimatedInputTokens.toLocaleString()}`);
 
   if (isPreview && previewMode) {
     if (previewMode === 'json' || previewMode === 'full') {
@@ -337,6 +335,14 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
     .map((value, index) => formatTokenValue(value, usage, index))
     .join('/');
   statsParts.push(`tok(i/o/r/t)=${tokensDisplay}`);
+  const actualInput = usage.input_tokens;
+  if (actualInput !== undefined) {
+    const delta = actualInput - estimatedInputTokens;
+    const deltaText = delta === 0 ? '' : delta > 0 ? ` (+${delta.toLocaleString()})` : ` (${delta.toLocaleString()})`;
+    statsParts.push(
+      `est→actual=${estimatedInputTokens.toLocaleString()}→${actualInput.toLocaleString()}${deltaText}`,
+    );
+  }
   if (!searchEnabled) {
     statsParts.push('search=off');
   }
