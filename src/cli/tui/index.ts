@@ -96,15 +96,15 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
 
     if (!showingOlder) {
       if (recent.length > 0) {
-        choices.push({ name: headerLabel, value: '__hdr__', disabled: true });
+        choices.push(new inquirer.Separator(headerLabel));
         choices.push(...recent.map(toSessionChoice));
       } else if (older.length > 0) {
         // No recent entries; show first page of older.
-        choices.push({ name: headerLabel, value: '__hdr__', disabled: true });
+        choices.push(new inquirer.Separator(headerLabel));
         choices.push(...older.slice(0, PAGE_SIZE).map(toSessionChoice));
       }
     } else if (older.length > 0) {
-      choices.push({ name: headerLabel, value: '__hdr__', disabled: true });
+      choices.push(new inquirer.Separator(headerLabel));
       choices.push(...older.map(toSessionChoice));
     }
 
