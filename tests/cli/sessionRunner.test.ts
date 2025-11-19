@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeAll, afterAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 vi.mock('../../src/oracle.ts', async () => {
   const actual = await vi.importActual<typeof import('../../src/oracle.ts')>('../../src/oracle.ts');
@@ -51,6 +51,16 @@ const baseRunOptions = {
 const log = vi.fn();
 const write = vi.fn(() => true);
 const cliVersion = getCliVersion();
+const originalPlatform = process.platform;
+
+beforeAll(() => {
+  // Force macOS platform so browser-mode paths are reachable in Linux/Windows CI
+  Object.defineProperty(process, 'platform', { value: 'darwin' });
+});
+
+afterAll(() => {
+  Object.defineProperty(process, 'platform', { value: originalPlatform });
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
