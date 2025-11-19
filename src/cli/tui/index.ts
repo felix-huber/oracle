@@ -84,7 +84,6 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
 
     choices.push({ name: 'Exit', value: '__exit__' });
 
-    let shortcutSelection: string | null = null;
     const prompt = inquirer.prompt<{ selection: string }>([
       {
         name: 'selection',
@@ -95,40 +94,7 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
       },
     ]);
 
-    const promptWithUi = prompt as unknown as {
-      ui?: { rl: import('readline').Interface; close: () => void };
-    };
-    const rl = promptWithUi.ui?.rl;
-    const rlInput = (rl as unknown as { input?: NodeJS.ReadStream })?.input;
-    const onKeypress = (_: unknown, key: { name?: string }): void => {
-      if (!key?.name) return;
-      if (!showingOlder && olderTotal > 0 && key.name === 'pagedown') {
-        shortcutSelection = '__older__';
-        promptWithUi.ui?.close();
-      } else {
-        if (key.name === 'pagedown' && hasOlderNext) {
-          shortcutSelection = '__more__';
-          promptWithUi.ui?.close();
-        } else if (key.name === 'pageup') {
-          shortcutSelection = hasOlderPrev ? '__prev__' : '__reset__';
-          promptWithUi.ui?.close();
-        }
-      }
-    };
-    rlInput?.on('keypress', onKeypress);
-
-    let selection: string;
-    try {
-      ({ selection } = await prompt);
-    } catch (error) {
-      if (shortcutSelection) {
-        selection = shortcutSelection;
-      } else {
-        rlInput?.off('keypress', onKeypress);
-        throw error;
-      }
-    }
-    rlInput?.off('keypress', onKeypress);
+    const { selection } = await prompt;
 
     if (selection === '__exit__') {
       console.log(chalk.green('🧿 Closing the book. See you next prompt.'));
