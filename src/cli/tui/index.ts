@@ -42,16 +42,18 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
   console.log(chalk.bold(`🧿 oracle v${version}`), dim('— Whispering your tokens to the silicon sage'));
   console.log('');
   let olderOffset = 0;
+  let showingOlder = false;
   for (;;) {
-    const { recent, older, hasMoreOlder } = await fetchSessionBuckets(olderOffset);
+    const { recent, older, olderTotal } = await fetchSessionBuckets(olderOffset);
     const choices: Array<SessionChoice | inquirer.Separator> = [];
-    const showingOlder = olderOffset > 0;
+
     if (!showingOlder) {
       if (recent.length > 0) {
         choices.push(new inquirer.Separator());
         choices.push(new inquirer.Separator('Status  Model         Mode    Timestamp           Chars  Cost  Slug'));
         choices.push(...recent.map(toSessionChoice));
       } else if (older.length > 0) {
+        // No recent entries; show first page of older.
         choices.push(new inquirer.Separator());
         choices.push(new inquirer.Separator('Status  Model         Mode    Timestamp           Chars  Cost  Slug'));
         choices.push(...older.slice(0, PAGE_SIZE).map(toSessionChoice));
@@ -59,17 +61,25 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
     } else if (older.length > 0) {
       choices.push(new inquirer.Separator());
       choices.push(new inquirer.Separator('Status  Model         Mode    Timestamp           Chars  Cost  Slug'));
-      choices.push(...older.slice(0, PAGE_SIZE).map(toSessionChoice));
+      choices.push(...older.map(toSessionChoice));
     }
+
     choices.push(new inquirer.Separator());
     choices.push(new inquirer.Separator('Actions'));
     choices.push({ name: chalk.bold.green('ask oracle'), value: '__ask__' });
-    if (hasMoreOlder) {
-      choices.push({ name: 'Load older', value: '__more__' });
-    }
-    if (olderOffset > 0 || (recent.length === 0 && older.length > 0)) {
+
+    if (!showingOlder && olderTotal > 0) {
+      choices.push({ name: 'Load older', value: '__older__' });
+    } else {
+      if (olderOffset > 0) {
+        choices.push({ name: 'Page up', value: '__prev__' });
+      }
+      if (olderOffset + PAGE_SIZE < olderTotal) {
+        choices.push({ name: 'Page down', value: '__more__' });
+      }
       choices.push({ name: 'Back to recent', value: '__reset__' });
     }
+
     choices.push({ name: 'Exit', value: '__exit__' });
 
     const { selection } = await inquirer.prompt<{ selection: string }>([
@@ -86,18 +96,29 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
       console.log(chalk.green('🧿 Closing the book. See you next prompt.'));
       return;
     }
-    if (selection === '__more__') {
-      olderOffset += PAGE_SIZE;
-      continue;
-    }
-    if (selection === '__reset__') {
-      olderOffset = 0;
-      continue;
-    }
     if (selection === '__ask__') {
       await askOracleFlow(version, userConfig);
       continue;
     }
+    if (selection === '__older__') {
+      showingOlder = true;
+      olderOffset = 0;
+      continue;
+    }
+    if (selection === '__more__') {
+      olderOffset = Math.min(olderOffset + PAGE_SIZE, Math.max(0, olderTotal - PAGE_SIZE));
+      continue;
+    }
+    if (selection === '__prev__') {
+      olderOffset = Math.max(0, olderOffset - PAGE_SIZE);
+      continue;
+    }
+    if (selection === '__reset__') {
+      showingOlder = false;
+      olderOffset = 0;
+      continue;
+    }
+
     await showSessionDetail(selection);
   }
 }
@@ -106,6 +127,7 @@ async function fetchSessionBuckets(olderOffset: number): Promise<{
   recent: SessionMetadata[];
   older: SessionMetadata[];
   hasMoreOlder: boolean;
+  olderTotal: number;
 }> {
   const all = await listSessionsMetadata();
   const cutoff = Date.now() - RECENT_WINDOW_HOURS * 60 * 60 * 1000;
@@ -116,9 +138,9 @@ async function fetchSessionBuckets(olderOffset: number): Promise<{
 
   if (recent.length === 0 && older.length === 0 && olderAll.length > 0) {
     // No recent entries; fall back to top 10 overall.
-    return { recent: olderAll.slice(0, PAGE_SIZE), older: [], hasMoreOlder: olderAll.length > PAGE_SIZE };
+    return { recent: olderAll.slice(0, PAGE_SIZE), older: [], hasMoreOlder: olderAll.length > PAGE_SIZE, olderTotal: olderAll.length };
   }
-  return { recent, older, hasMoreOlder };
+  return { recent, older, hasMoreOlder, olderTotal: olderAll.length };
 }
 
 function toSessionChoice(meta: SessionMetadata): SessionChoice {
