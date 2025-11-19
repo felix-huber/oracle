@@ -8,14 +8,21 @@ const model = 'gpt-5.1' as const;
 
 describe('buildBrowserConfig inline cookies', () => {
   let originalEnvHome: string | undefined;
+  let originalOracleHome: string | undefined;
 
   beforeEach(() => {
     originalEnvHome = process.env.HOME;
+    originalOracleHome = process.env.ORACLE_HOME_DIR;
   });
 
   afterEach(() => {
     if (originalEnvHome !== undefined) {
       process.env.HOME = originalEnvHome;
+    }
+    if (originalOracleHome !== undefined) {
+      process.env.ORACLE_HOME_DIR = originalOracleHome;
+    } else {
+      delete process.env.ORACLE_HOME_DIR;
     }
     delete process.env.ORACLE_BROWSER_COOKIES_JSON;
     delete process.env.ORACLE_BROWSER_COOKIES_FILE;
@@ -45,7 +52,8 @@ describe('buildBrowserConfig inline cookies', () => {
   test('falls back to ~/.oracle/cookies.json when no inline args provided', async () => {
     const fakeHome = await fs.mkdtemp(path.join(os.tmpdir(), 'oracle-home-'));
     process.env.HOME = fakeHome;
-    const oracleDir = path.join(fakeHome, '.oracle');
+    process.env.ORACLE_HOME_DIR = path.join(fakeHome, '.oracle');
+    const oracleDir = process.env.ORACLE_HOME_DIR;
     await fs.mkdir(oracleDir, { recursive: true });
     const homeFile = path.join(oracleDir, 'cookies.json');
     await fs.writeFile(homeFile, JSON.stringify([{ name: 'cf_clearance', value: 'token', domain: 'chatgpt.com' }]));

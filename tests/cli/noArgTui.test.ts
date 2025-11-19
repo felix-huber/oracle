@@ -15,7 +15,11 @@ describe('zero-arg TUI entry', () => {
     process.env.ORACLE_FORCE_TUI = '1';
 
     await import('../../bin/oracle-cli.js');
-    await new Promise((resolve) => setImmediate(resolve));
+
+    // Commander wires the action async; poll briefly to avoid flakiness on slower runners.
+    for (let i = 0; i < 10 && launchTuiMock.mock.calls.length === 0; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
 
     expect(launchTuiMock).toHaveBeenCalled();
 
