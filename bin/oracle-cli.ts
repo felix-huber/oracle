@@ -925,7 +925,9 @@ async function runRootCommand(options: CliOptions): Promise<void> {
       return;
     }
     console.log(chalk.blue(`Session running in background. Reattach via: oracle session ${sessionMeta.id}`));
-    console.log(chalk.dim('Pro runs can take up to 10 minutes. Add --wait to stay attached.'));
+    console.log(
+      chalk.dim('Pro runs can take up to 60 minutes (usually 10-15). Add --wait to stay attached.'),
+    );
     return;
   }
 
