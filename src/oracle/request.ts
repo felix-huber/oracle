@@ -8,6 +8,7 @@ import type {
 } from './types.js';
 import { DEFAULT_SYSTEM_PROMPT } from './config.js';
 import { createFileSections, readFiles } from './files.js';
+import { formatFileSection } from './markdown.js';
 import { createFsAdapter } from './fsAdapter.js';
 
 export function buildPrompt(basePrompt: string, files: FileContent[], cwd = process.cwd()): string {
@@ -63,7 +64,7 @@ export async function renderPromptMarkdown(
   const lines = ['[SYSTEM]', systemPrompt, ''];
   lines.push('[USER]', userPrompt, '');
   sections.forEach((section) => {
-    lines.push(`[FILE: ${section.displayPath}]`, section.content.trimEnd(), '');
+    lines.push(formatFileSection(section.displayPath, section.content));
   });
-  return lines.join('\n');
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
 }

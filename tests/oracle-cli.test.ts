@@ -1013,7 +1013,7 @@ describe('renderPromptMarkdown', () => {
       );
       expect(markdown).toContain('[SYSTEM]');
       expect(markdown).toContain('[USER]');
-      expect(markdown).toContain('[FILE: sample.txt]');
+      expect(markdown).toContain('### File: sample.txt');
       expect(markdown).toContain('rendered content');
     } finally {
       await rm(dir, { recursive: true, force: true });
