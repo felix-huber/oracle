@@ -74,7 +74,8 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
     hideWindow: options.browserHideWindow ? true : undefined,
     desiredModel: shouldUseOverride ? desiredModelOverride : mapModelToBrowserLabel(options.model),
     debug: options.verbose ? true : undefined,
-    allowCookieErrors: options.browserAllowCookieErrors ? true : undefined,
+    // Allow cookie failures by default so runs can continue without Chrome/Keychain secrets.
+    allowCookieErrors: options.browserAllowCookieErrors ? true : true,
     remoteChrome,
   };
 }

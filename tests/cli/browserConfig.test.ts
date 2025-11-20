@@ -17,7 +17,7 @@ describe('buildBrowserConfig', () => {
       hideWindow: undefined,
       desiredModel: 'GPT-5.1 Pro',
       debug: undefined,
-      allowCookieErrors: undefined,
+      allowCookieErrors: true,
     });
   });
 
@@ -45,7 +45,7 @@ describe('buildBrowserConfig', () => {
       timeoutMs: 120_000,
       inputTimeoutMs: 5_000,
       cookieSync: false,
-      headless: true,
+      headless: undefined,
       hideWindow: true,
       keepBrowser: true,
       desiredModel: 'GPT-5.1',

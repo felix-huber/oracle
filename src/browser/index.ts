@@ -88,6 +88,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
   let runStatus: 'attempted' | 'complete' = 'attempted';
   let connectionClosedUnexpectedly = false;
   let stopThinkingMonitor: (() => void) | null = null;
+  let appliedCookies = 0;
 
   try {
     client = await connectToChrome(chrome.port, logger);
@@ -122,6 +123,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
         inlineCookies: config.inlineCookies ?? undefined,
         cookiePath: config.chromeCookiePath ?? undefined,
       });
+      appliedCookies = cookieCount;
       logger(
         cookieCount > 0
           ? config.inlineCookies
@@ -151,7 +153,14 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
             }
           },
         },
-      );
+      ).catch((error) => {
+        const base = error instanceof Error ? error.message : String(error);
+        const hint =
+          appliedCookies === 0
+            ? ' No cookies were applied; log in to ChatGPT in Chrome or provide inline cookies (--browser-inline-cookies[(-file)] or ORACLE_BROWSER_COOKIES_JSON).'
+            : '';
+        throw new Error(`${base}${hint}`);
+      });
       await ensurePromptReady(Runtime, config.inputTimeoutMs, logger);
       logger(`Prompt textarea ready (after model switch, ${promptText.length.toLocaleString()} chars queued)`);
     }
