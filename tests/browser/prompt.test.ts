@@ -23,12 +23,13 @@ describe('assembleBrowserPrompt', () => {
     });
     expect(result.markdown).toContain('[SYSTEM]');
     expect(result.markdown).toContain('[USER]');
-    expect(result.markdown).toContain('[FILE: a.txt]');
+    expect(result.markdown).toContain('### File: a.txt');
+    expect(result.markdown).toContain('```');
     expect(result.composerText).not.toContain(DEFAULT_SYSTEM_PROMPT);
     expect(result.composerText).toBe('Explain the bug');
     expect(result.composerText).not.toContain('[SYSTEM]');
     expect(result.composerText).not.toContain('[USER]');
-    expect(result.composerText).not.toContain('[FILE:');
+    expect(result.composerText).not.toContain('### File:');
     expect(result.estimatedInputTokens).toBeGreaterThan(0);
     expect(result.attachments).toEqual([
       expect.objectContaining({ path: '/repo/a.txt', displayPath: 'a.txt' }),
@@ -44,10 +45,11 @@ describe('assembleBrowserPrompt', () => {
       readFilesImpl: async (paths) =>
         paths.map((entry, index) => ({ path: path.resolve('/root/project', entry), content: `file-${index}` })),
     });
-    expect(result.markdown).toContain('[FILE: docs/one.md]');
-    expect(result.markdown).toContain('[FILE: docs/two.md]');
-    expect(result.composerText).not.toContain('[FILE: docs/one.md]');
-    expect(result.composerText).not.toContain('[FILE: docs/two.md]');
+    expect(result.markdown).toContain('### File: docs/one.md');
+    expect(result.markdown).toContain('### File: docs/two.md');
+    expect(result.markdown).toContain('```');
+    expect(result.composerText).not.toContain('### File: docs/one.md');
+    expect(result.composerText).not.toContain('### File: docs/two.md');
     expect(result.attachments).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ path: path.resolve('/root/project', 'docs/one.md'), displayPath: 'docs/one.md' }),
@@ -62,7 +64,7 @@ describe('assembleBrowserPrompt', () => {
       cwd: '/repo',
       readFilesImpl: async () => [{ path: '/repo/a.txt', content: 'inline test' }],
     });
-    expect(result.composerText).toContain('[FILE: a.txt]');
+    expect(result.composerText).toContain('### File: a.txt');
     expect(result.composerText).not.toContain('[SYSTEM]');
     expect(result.composerText).not.toContain('[USER]');
     expect(result.attachments).toEqual([]);

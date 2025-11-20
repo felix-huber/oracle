@@ -3,6 +3,7 @@ import { DEFAULT_SYSTEM_PROMPT } from '../oracle/config.js';
 import { buildPrompt } from '../oracle/request.js';
 import { createFileSections, readFiles } from '../oracle/files.js';
 import { createFsAdapter } from '../oracle/fsAdapter.js';
+import { formatFileSection } from '../oracle/markdown.js';
 import type { MinimalFsModule, RunOracleOptions, FileContent } from '../oracle/types.js';
 
 export interface MarkdownBundle {
@@ -26,10 +27,10 @@ export async function buildMarkdownBundle(
   const lines = ['[SYSTEM]', systemPrompt, ''];
   lines.push('[USER]', userPrompt, '');
   sections.forEach((section) => {
-    lines.push(`[FILE: ${section.displayPath}]`, section.content.trimEnd(), '');
+    lines.push(formatFileSection(section.displayPath, section.content));
   });
 
-  const markdown = lines.join('\n');
+  const markdown = lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
   const promptWithFiles = buildPrompt(userPrompt, files, cwd);
   return { markdown, promptWithFiles, systemPrompt, files };
 }

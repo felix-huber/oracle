@@ -16,7 +16,8 @@ describe('buildMarkdownBundle', () => {
     expect(bundle.markdown).toMatch('SYS');
     expect(bundle.markdown).toMatch('[USER]');
     expect(bundle.markdown).toMatch('Do it');
-    expect(bundle.markdown).toMatch('[FILE: a.txt]');
+    expect(bundle.markdown).toMatch('### File: a.txt');
+    expect(bundle.markdown).toMatch('```');
     expect(bundle.markdown).toMatch('hello world');
     expect(bundle.promptWithFiles).toContain('Do it');
     expect(bundle.promptWithFiles).toContain('hello world');

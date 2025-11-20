@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { RunOracleOptions } from '../oracle.js';
-import { readFiles, createFileSections, MODEL_CONFIGS, TOKENIZER_OPTIONS } from '../oracle.js';
+import { readFiles, createFileSections, MODEL_CONFIGS, TOKENIZER_OPTIONS, formatFileSection } from '../oracle.js';
 import type { BrowserAttachment } from './types.js';
 
 export interface BrowserPromptArtifacts {
@@ -33,9 +33,9 @@ export async function assembleBrowserPrompt(
   const sections = createFileSections(files, cwd);
   const lines = ['[SYSTEM]', systemPrompt, '', '[USER]', userPrompt, ''];
   sections.forEach((section) => {
-    lines.push(`[FILE: ${section.displayPath}]`, section.content.trimEnd(), '');
+    lines.push(formatFileSection(section.displayPath, section.content));
   });
-  const markdown = lines.join('\n').trimEnd();
+  const markdown = lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
   const inlineFiles = Boolean(runOptions.browserInlineFiles);
   const composerSections: string[] = [];
   if (systemPrompt) {
@@ -48,7 +48,7 @@ export async function assembleBrowserPrompt(
   if (inlineFiles && sections.length > 0) {
     const inlineLines: string[] = [];
     sections.forEach((section) => {
-      inlineLines.push(`[FILE: ${section.displayPath}]`, section.content.trimEnd(), '');
+      inlineLines.push(formatFileSection(section.displayPath, section.content).trimEnd(), '');
     });
     inlineBlock = inlineLines.join('\n').trim();
     if (inlineBlock.length > 0) {
@@ -72,11 +72,10 @@ export async function assembleBrowserPrompt(
     const bundlePath = path.join(bundleDir, 'attachments-bundle.txt');
     const bundleLines: string[] = [];
     sections.forEach((section) => {
-      bundleLines.push(`### File: ${section.displayPath}`);
-      bundleLines.push(section.content.trimEnd());
+      bundleLines.push(formatFileSection(section.displayPath, section.content).trimEnd());
       bundleLines.push('');
     });
-    bundleText = `${bundleLines.join('\n').trimEnd()}\n`;
+    bundleText = `${bundleLines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`;
     await fs.writeFile(bundlePath, bundleText, 'utf8');
     attachments.length = 0;
     attachments.push({
@@ -106,7 +105,7 @@ export async function assembleBrowserPrompt(
     const attachmentText =
       bundleText ??
       sections
-        .map((section) => `### File: ${section.displayPath}\n${section.content.trimEnd()}`)
+        .map((section) => formatFileSection(section.displayPath, section.content).trimEnd())
         .join('\n\n');
     const attachmentTokens = tokenizer(
       [{ role: 'user', content: attachmentText }],
