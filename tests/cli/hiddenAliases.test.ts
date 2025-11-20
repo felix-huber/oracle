@@ -1,10 +1,10 @@
 import { describe, expect, test, vi } from 'vitest';
-import { applyHiddenAliases } from '../../src/cli/hiddenAliases.js';
+import { applyHiddenAliases, type HiddenAliasOptions } from '../../src/cli/hiddenAliases.js';
 
 describe('applyHiddenAliases', () => {
   test('maps --mode to engine when engine not set', () => {
     const setOptionValue = vi.fn();
-    const opts = { mode: 'browser' } as any;
+    const opts: HiddenAliasOptions = { mode: 'browser' };
 
     applyHiddenAliases(opts, setOptionValue);
 
@@ -14,7 +14,7 @@ describe('applyHiddenAliases', () => {
 
   test('does not override explicit engine', () => {
     const setOptionValue = vi.fn();
-    const opts = { mode: 'browser', engine: 'api' } as any;
+    const opts: HiddenAliasOptions = { mode: 'browser', engine: 'api' };
 
     applyHiddenAliases(opts, setOptionValue);
 

@@ -43,10 +43,15 @@ async function runMcporter(args: string[]): Promise<McporterOutput> {
         MCP_CONFIG,
       ]);
       expect(consult).not.toHaveProperty('error');
+      const consultResult = consult.result as
+        | { sessionId?: string }
+        | string
+        | undefined;
       const sessionId =
-        (consult as any)?.result?.sessionId ||
-        (consult as any)?.sessionId ||
-        (typeof consult.result === 'string' ? consult.result : null);
+        (consultResult && typeof consultResult === 'object' ? consultResult.sessionId : undefined) ||
+        (consultResult && typeof consultResult === 'string' ? consultResult : undefined) ||
+        consult.sessionId ||
+        null;
       expect(sessionId).toBeTruthy();
 
       const detail = await runMcporter([
@@ -58,7 +63,8 @@ async function runMcporter(args: string[]): Promise<McporterOutput> {
         MCP_CONFIG,
       ]);
       expect(detail).not.toHaveProperty('error');
-      const body = (detail as any)?.result ?? detail;
+      const detailBody = detail as { result?: unknown };
+      const body = detailBody.result ?? detail;
       const text = JSON.stringify(body);
       expect(text).toContain(String(sessionId));
       expect(text.toLowerCase()).toContain('completed');
