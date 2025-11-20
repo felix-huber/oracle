@@ -1,0 +1,176 @@
+import { CLOUDFLARE_SCRIPT_SELECTOR, CLOUDFLARE_TITLE, INPUT_SELECTORS, } from '../constants.js';
+import { delay } from '../utils.js';
+import { logDomFailure } from '../domDebug.js';
+export async function navigateToChatGPT(Page, Runtime, url, logger) {
+    logger(`Navigating to ${url}`);
+    await Page.navigate({ url });
+    await waitForDocumentReady(Runtime, 45_000);
+}
+export async function ensureNotBlocked(Runtime, headless, logger) {
+    if (await isCloudflareInterstitial(Runtime)) {
+        const message = headless
+            ? 'Cloudflare challenge detected in headless mode. Re-run with --headful so you can solve the challenge.'
+            : 'Cloudflare challenge detected. Complete the “Just a moment…” check in the open browser, then rerun.';
+        logger('Cloudflare anti-bot page detected');
+        throw new Error(message);
+    }
+}
+const LOGIN_CHECK_TIMEOUT_MS = 5_000;
+export async function ensureLoggedIn(Runtime, logger, options = {}) {
+    const outcome = await Runtime.evaluate({
+        expression: buildLoginProbeExpression(LOGIN_CHECK_TIMEOUT_MS),
+        awaitPromise: true,
+        returnByValue: true,
+    });
+    const probe = normalizeLoginProbe(outcome.result?.value);
+    if (probe.ok && !probe.domLoginCta && !probe.onAuthPage) {
+        logger('Login check passed (no login button detected on page)');
+        return;
+    }
+    const domLabel = probe.domLoginCta ? ' Login button detected on page.' : '';
+    const cookieHint = options.remoteSession
+        ? 'The remote Chrome session is not signed into ChatGPT. Sign in there, then rerun.'
+        : (options.appliedCookies ?? 0) === 0
+            ? 'No ChatGPT cookies were applied; sign in to chatgpt.com in Chrome or pass inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON).'
+            : 'ChatGPT login appears missing; open chatgpt.com in Chrome to refresh the session or provide inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON).';
+    throw new Error(`ChatGPT session not detected.${domLabel} ${cookieHint}`);
+}
+export async function ensurePromptReady(Runtime, timeoutMs, logger) {
+    const ready = await waitForPrompt(Runtime, timeoutMs);
+    if (!ready) {
+        await logDomFailure(Runtime, logger, 'prompt-textarea');
+        throw new Error('Prompt textarea did not appear before timeout');
+    }
+    logger('Prompt textarea ready');
+}
+async function waitForDocumentReady(Runtime, timeoutMs) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+        const { result } = await Runtime.evaluate({
+            expression: `document.readyState`,
+            returnByValue: true,
+        });
+        if (result?.value === 'complete' || result?.value === 'interactive') {
+            return;
+        }
+        await delay(100);
+    }
+    throw new Error('Page did not reach ready state in time');
+}
+async function waitForPrompt(Runtime, timeoutMs) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const { result } = await Runtime.evaluate({
+            expression: `(() => {
+        const selectors = ${JSON.stringify(INPUT_SELECTORS)};
+        for (const selector of selectors) {
+          const node = document.querySelector(selector);
+          if (node && !node.hasAttribute('disabled')) {
+            return true;
+          }
+        }
+        return false;
+      })()`,
+            returnByValue: true,
+        });
+        if (result?.value) {
+            return true;
+        }
+        await delay(200);
+    }
+    return false;
+}
+async function isCloudflareInterstitial(Runtime) {
+    const { result: titleResult } = await Runtime.evaluate({ expression: 'document.title', returnByValue: true });
+    const title = typeof titleResult.value === 'string' ? titleResult.value : '';
+    const challengeTitle = CLOUDFLARE_TITLE.toLowerCase();
+    if (title.toLowerCase().includes(challengeTitle)) {
+        return true;
+    }
+    const { result } = await Runtime.evaluate({
+        expression: `Boolean(document.querySelector('${CLOUDFLARE_SCRIPT_SELECTOR}'))`,
+        returnByValue: true,
+    });
+    return Boolean(result.value);
+}
+function buildLoginProbeExpression(timeoutMs) {
+    return `(() => {
+    const timer = setTimeout(() => {}, ${timeoutMs});
+    const pageUrl = typeof location === 'object' && location?.href ? location.href : null;
+    const onAuthPage =
+      typeof location === 'object' &&
+      typeof location.pathname === 'string' &&
+      /^\\/(auth|login|signin)/i.test(location.pathname);
+
+    const hasLoginCta = () => {
+      const candidates = Array.from(
+        document.querySelectorAll(
+          [
+            'a[href*="/auth/login"]',
+            'a[href*="/auth/signin"]',
+            'button[type="submit"]',
+            'button[data-testid*="login"]',
+            'button[data-testid*="log-in"]',
+            'button[data-testid*="sign-in"]',
+            'button[data-testid*="signin"]',
+            'button',
+            'a',
+          ].join(','),
+        ),
+      );
+      const textMatches = (text) => {
+        if (!text) return false;
+        const normalized = text.toLowerCase().trim();
+        return ['log in', 'login', 'sign in', 'signin', 'continue with'].some((needle) =>
+          normalized.startsWith(needle),
+        );
+      };
+      for (const node of candidates) {
+        if (!(node instanceof HTMLElement)) continue;
+        const label =
+          node.textContent?.trim() ||
+          node.getAttribute('aria-label') ||
+          node.getAttribute('title') ||
+          '';
+        if (textMatches(label)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const domLoginCta = hasLoginCta();
+    clearTimeout(timer);
+    return {
+      ok: !domLoginCta && !onAuthPage,
+      status: 0,
+      redirected: false,
+      url: pageUrl,
+      pageUrl,
+      domLoginCta,
+      onAuthPage,
+    };
+  })()`;
+}
+function normalizeLoginProbe(raw) {
+    if (!raw || typeof raw !== 'object') {
+        return { ok: false, status: 0 };
+    }
+    const value = raw;
+    const statusRaw = value.status;
+    const status = typeof statusRaw === 'number'
+        ? statusRaw
+        : typeof statusRaw === 'string' && !Number.isNaN(Number(statusRaw))
+            ? Number(statusRaw)
+            : 0;
+    return {
+        ok: Boolean(value.ok),
+        status: Number.isFinite(status) ? status : 0,
+        url: typeof value.url === 'string' ? value.url : null,
+        redirected: Boolean(value.redirected),
+        error: typeof value.error === 'string' ? value.error : null,
+        pageUrl: typeof value.pageUrl === 'string' ? value.pageUrl : null,
+        domLoginCta: Boolean(value.domLoginCta),
+        onAuthPage: Boolean(value.onAuthPage),
+    };
+}

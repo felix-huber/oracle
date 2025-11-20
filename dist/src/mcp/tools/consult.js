@@ -1,0 +1,222 @@
+import { z } from 'zod';
+import { getCliVersion } from '../../version.js';
+import { LoggingMessageNotificationParamsSchema } from '@modelcontextprotocol/sdk/types.js';
+import { ensureBrowserAvailable, mapConsultToRunOptions } from '../utils.js';
+import { sessionStore } from '../../sessionStore.js';
+async function readSessionLogTail(sessionId, maxBytes) {
+    try {
+        const log = await sessionStore.readLog(sessionId);
+        if (log.length <= maxBytes) {
+            return log;
+        }
+        return log.slice(-maxBytes);
+    }
+    catch {
+        return null;
+    }
+}
+import { performSessionRun } from '../../cli/sessionRunner.js';
+import { CHATGPT_URL } from '../../browser/constants.js';
+import { consultInputSchema } from '../types.js';
+import { loadUserConfig } from '../../config.js';
+import { resolveNotificationSettings } from '../../cli/notifier.js';
+import { mapModelToBrowserLabel, resolveBrowserModelLabel } from '../../cli/browserConfig.js';
+// Use raw shapes so the MCP SDK (with its bundled Zod) wraps them and emits valid JSON Schema.
+const consultInputShape = {
+    prompt: z.string().min(1, 'Prompt is required.'),
+    files: z.array(z.string()).default([]),
+    model: z.string().optional(),
+    models: z.array(z.string()).optional(),
+    engine: z.enum(['api', 'browser']).optional(),
+    browserModelLabel: z.string().optional(),
+    search: z.boolean().optional(),
+    slug: z.string().optional(),
+};
+const consultModelSummaryShape = z.object({
+    model: z.string(),
+    status: z.string(),
+    startedAt: z.string().optional(),
+    completedAt: z.string().optional(),
+    usage: z
+        .object({
+        inputTokens: z.number().optional(),
+        outputTokens: z.number().optional(),
+        reasoningTokens: z.number().optional(),
+        totalTokens: z.number().optional(),
+        cost: z.number().optional(),
+    })
+        .optional(),
+    response: z
+        .object({
+        id: z.string().optional(),
+        requestId: z.string().optional(),
+        status: z.string().optional(),
+    })
+        .optional(),
+    error: z
+        .object({
+        category: z.string().optional(),
+        message: z.string().optional(),
+    })
+        .optional(),
+    logPath: z.string().optional(),
+});
+const consultOutputShape = {
+    sessionId: z.string(),
+    status: z.string(),
+    output: z.string(),
+    models: z.array(consultModelSummaryShape).optional(),
+};
+export function summarizeModelRunsForConsult(runs) {
+    if (!runs || runs.length === 0) {
+        return undefined;
+    }
+    return runs.map((run) => {
+        const response = run.response
+            ? {
+                id: run.response.id ?? undefined,
+                requestId: run.response.requestId ?? undefined,
+                status: run.response.status ?? undefined,
+            }
+            : undefined;
+        const error = run.error
+            ? {
+                category: run.error.category,
+                message: run.error.message,
+            }
+            : undefined;
+        return {
+            model: run.model,
+            status: run.status ?? 'unknown',
+            startedAt: run.startedAt,
+            completedAt: run.completedAt,
+            usage: run.usage,
+            response,
+            error,
+            logPath: run.log?.path,
+        };
+    });
+}
+export function registerConsultTool(server) {
+    server.registerTool('consult', {
+        title: 'Run an oracle session',
+        description: 'Run a one-shot Oracle session (API or browser). Attach files/dirs for context, optional model/engine overrides, and an optional slug. Background handling follows the CLI defaults; browser runs only start when Chrome is available.',
+        // Cast to any to satisfy SDK typings across differing Zod versions.
+        inputSchema: consultInputShape,
+        outputSchema: consultOutputShape,
+    }, async (input) => {
+        const textContent = (text) => [{ type: 'text', text }];
+        const { prompt, files, model, models, engine, search, browserModelLabel, slug } = consultInputSchema.parse(input);
+        const { config: userConfig } = await loadUserConfig();
+        const { runOptions, resolvedEngine } = mapConsultToRunOptions({
+            prompt,
+            files: files ?? [],
+            model,
+            models,
+            engine,
+            search,
+            userConfig,
+            env: process.env,
+        });
+        const cwd = process.cwd();
+        const browserGuard = ensureBrowserAvailable(resolvedEngine);
+        if (resolvedEngine === 'browser' &&
+            (browserGuard ||
+                (process.platform === 'linux' && !process.env.DISPLAY && !process.env.CHROME_PATH))) {
+            return {
+                isError: true,
+                content: textContent(browserGuard ?? 'Browser engine unavailable: set DISPLAY or CHROME_PATH.'),
+            };
+        }
+        let browserConfig;
+        if (resolvedEngine === 'browser') {
+            const preferredLabel = (browserModelLabel ?? model)?.trim();
+            const desiredModelLabel = resolveBrowserModelLabel(preferredLabel, runOptions.model);
+            // Keep the browser path minimal; only forward a desired model label for the ChatGPT picker.
+            browserConfig = {
+                url: CHATGPT_URL,
+                cookieSync: true,
+                headless: false,
+                hideWindow: false,
+                keepBrowser: false,
+                desiredModel: desiredModelLabel || mapModelToBrowserLabel(runOptions.model),
+            };
+        }
+        const notifications = resolveNotificationSettings({
+            cliNotify: undefined,
+            cliNotifySound: undefined,
+            env: process.env,
+            config: userConfig.notify,
+        });
+        const sessionMeta = await sessionStore.createSession({
+            ...runOptions,
+            mode: resolvedEngine,
+            slug,
+            browserConfig,
+        }, cwd, notifications);
+        const logWriter = sessionStore.createLogWriter(sessionMeta.id);
+        // Best-effort: emit MCP logging notifications for live chunks but never block the run.
+        const sendLog = (text, level = 'info') => server.server
+            .sendLoggingMessage(LoggingMessageNotificationParamsSchema.parse({
+            level,
+            data: { text, bytes: Buffer.byteLength(text, 'utf8') },
+        }))
+            .catch(() => { });
+        // Stream logs to both the session log and MCP logging notifications, but avoid buffering in memory
+        const log = (line) => {
+            logWriter.logLine(line);
+            if (line !== undefined) {
+                sendLog(line);
+            }
+        };
+        const write = (chunk) => {
+            logWriter.writeChunk(chunk);
+            sendLog(chunk, 'debug');
+            return true;
+        };
+        try {
+            await performSessionRun({
+                sessionMeta,
+                runOptions,
+                mode: resolvedEngine,
+                browserConfig,
+                cwd,
+                log,
+                write,
+                version: getCliVersion(),
+                notifications,
+            });
+        }
+        catch (error) {
+            log(`Run failed: ${error instanceof Error ? error.message : String(error)}`);
+            return {
+                isError: true,
+                content: textContent(`Session ${sessionMeta.id} failed: ${error instanceof Error ? error.message : String(error)}`),
+            };
+        }
+        finally {
+            logWriter.stream.end();
+        }
+        try {
+            const finalMeta = (await sessionStore.readSession(sessionMeta.id)) ?? sessionMeta;
+            const summary = `Session ${sessionMeta.id} (${finalMeta.status})`;
+            const logTail = await readSessionLogTail(sessionMeta.id, 4000);
+            const modelsSummary = summarizeModelRunsForConsult(finalMeta.models);
+            return {
+                content: textContent([summary, logTail || '(log empty)'].join('\n').trim()),
+                structuredContent: {
+                    sessionId: sessionMeta.id,
+                    status: finalMeta.status,
+                    output: logTail ?? '',
+                    models: modelsSummary,
+                },
+            };
+        }
+        catch (error) {
+            return {
+                isError: true,
+                content: textContent(`Session completed but metadata fetch failed: ${error instanceof Error ? error.message : String(error)}`),
+            };
+        }
+    });
+}
