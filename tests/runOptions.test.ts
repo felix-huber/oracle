@@ -169,6 +169,15 @@ describe('resolveRunOptionsFromConfig', () => {
     expect(engineCoercedToApi).toBe(true);
     expect(runOptions.model).toBe('claude-4.1-opus');
   });
+
+  it('sets effectiveModelId from the first entry in --models', () => {
+    const { runOptions } = resolveRunOptionsFromConfig({
+      prompt: basePrompt,
+      models: ['claude-4.5-sonnet', 'gpt-5.1-pro'],
+    });
+    expect(runOptions.model).toBe('claude-4.5-sonnet');
+    expect(runOptions.effectiveModelId).toBe('claude-4.5-sonnet');
+  });
 });
 
 describe('estimateRequestTokens', () => {

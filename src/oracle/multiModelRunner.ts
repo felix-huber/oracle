@@ -13,6 +13,7 @@ import {
 import type { SessionStore } from '../sessionStore.js';
 import { sessionStore } from '../sessionStore.js';
 import { MODEL_CONFIGS, PRO_MODELS } from './config.js';
+import { resolveGeminiModelId } from './gemini.js';
 
 export interface MultiModelRunParams {
   sessionMeta: SessionMetadata;
@@ -111,6 +112,7 @@ function startModelExecution({
     models: undefined,
     sessionId: `${sessionMeta.id}:${model}`,
     background: resolvePerModelBackground(runOptions, model),
+    effectiveModelId: resolveEffectiveModelId(model),
   };
   const perModelLog = (message?: string): void => {
     logWriter.logLine(message ?? '');
@@ -177,6 +179,13 @@ function startModelExecution({
     });
 
   return { model, promise };
+}
+
+function resolveEffectiveModelId(model: ModelName): string {
+  if (model.startsWith('gemini')) {
+    return resolveGeminiModelId(model);
+  }
+  return model;
 }
 
 function resolvePerModelBackground(runOptions: RunOracleOptions, model: ModelName): boolean | undefined {

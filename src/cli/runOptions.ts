@@ -44,10 +44,6 @@ export function resolveRunOptionsFromConfig({
   const isGemini = resolvedModel.startsWith('gemini');
   const isCodex = resolvedModel.startsWith('gpt-5.1-codex');
   const isAnthropic = resolvedModel.startsWith('claude');
-  // Keep the resolved model id alongside the canonical model name so we can log
-  // and dispatch the exact identifier (useful for Gemini preview aliases).
-  const effectiveModelId = isGemini ? resolveGeminiModelId(resolvedModel) : resolvedModel;
-
   const engineCoercedToApi = (isGemini || isCodex || isAnthropic) && browserRequested;
   // When Gemini, Codex, or Anthropic is selected, always force API engine (overrides config/env auto browser).
   const fixedEngine: EngineMode =
@@ -75,9 +71,12 @@ export function resolveRunOptionsFromConfig({
     // Silent coerce; multi-model still forces API.
   }
 
+  const chosenModel: ModelName = uniqueMultiModels[0] ?? resolvedModel;
+  const effectiveModelId = resolveEffectiveModelId(chosenModel);
+
   const runOptions: RunOracleOptions = {
     prompt: promptWithSuffix,
-    model: uniqueMultiModels[0] ?? resolvedModel,
+    model: chosenModel,
     models: uniqueMultiModels.length > 0 ? uniqueMultiModels : undefined,
     file: files ?? [],
     search,
@@ -103,4 +102,11 @@ function resolveEngineWithConfig({
   if (engine) return engine;
   if (configEngine) return configEngine;
   return resolveEngine({ engine: undefined, env });
+}
+
+function resolveEffectiveModelId(model: ModelName): string {
+  if (model.startsWith('gemini')) {
+    return resolveGeminiModelId(model);
+  }
+  return model;
 }
