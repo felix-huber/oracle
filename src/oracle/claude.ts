@@ -130,9 +130,9 @@ export function createClaudeClient(
 export function resolveClaudeModelId(modelName: ModelName): string {
   switch (modelName) {
     case 'claude-4.5-sonnet':
-      return 'claude-3-5-sonnet-latest';
+      return 'claude-sonnet-4-5-20250929';
     case 'claude-4.1-opus':
-      return 'claude-3-opus-latest';
+      return 'claude-opus-4-1-20250805';
     default:
       return modelName;
   }
