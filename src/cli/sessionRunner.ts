@@ -230,9 +230,13 @@ export async function performSessionRun({
         : undefined,
     });
     if (mode === 'browser') {
-      log(dim('Browser fallback:')); // guides users when automation breaks
-      log(dim('- Use --engine api to run the same prompt without Chrome.'));
-      log(dim('- Add --browser-bundle-files to bundle attachments into a single text file you can drag into ChatGPT.'));
+      log(dim('Next steps (browser fallback):')); // guides users when automation breaks
+      log(dim('- Rerun with --engine api to bypass Chrome entirely.'));
+      log(
+        dim(
+          '- Or rerun with --engine api --render-markdown [--file …] to generate a single markdown bundle you can paste into ChatGPT manually (add --browser-bundle-files if you still want attachments).',
+        ),
+      );
     }
     throw error;
   }
