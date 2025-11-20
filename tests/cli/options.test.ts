@@ -104,6 +104,8 @@ describe('resolveApiModel', () => {
     expect(resolveApiModel('gpt-5-pro')).toBe('gpt-5-pro');
     expect(resolveApiModel('GPT-5.1')).toBe('gpt-5.1');
     expect(resolveApiModel('GPT-5.1-CODEX')).toBe('gpt-5.1-codex');
+    expect(resolveApiModel('claude-4.5-sonnet')).toBe('claude-4.5-sonnet');
+    expect(resolveApiModel('CLAUDE-4.1-OPUS')).toBe('claude-4.1-opus');
   });
 
   test('rejects codex max until API is available', () => {
@@ -121,6 +123,8 @@ describe('inferModelFromLabel', () => {
     expect(inferModelFromLabel('gpt-5-pro')).toBe('gpt-5-pro');
     expect(inferModelFromLabel('gpt-5.1')).toBe('gpt-5.1');
     expect(inferModelFromLabel('gpt-5.1-codex')).toBe('gpt-5.1-codex');
+    expect(inferModelFromLabel('claude-4.5-sonnet')).toBe('claude-4.5-sonnet');
+    expect(inferModelFromLabel('claude-4.1-opus')).toBe('claude-4.1-opus');
   });
 
   test('infers ChatGPT Instant variants as gpt-5.1', () => {

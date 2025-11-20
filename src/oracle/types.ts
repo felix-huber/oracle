@@ -1,8 +1,15 @@
 export type TokenizerFn = (input: unknown, options?: Record<string, unknown>) => number;
 
-export type ModelName = 'gpt-5.1-pro' | 'gpt-5-pro' | 'gpt-5.1' | 'gpt-5.1-codex' | 'gemini-3-pro';
+export type ModelName =
+  | 'gpt-5.1-pro'
+  | 'gpt-5-pro'
+  | 'gpt-5.1'
+  | 'gpt-5.1-codex'
+  | 'gemini-3-pro'
+  | 'claude-4.5-sonnet'
+  | 'claude-4.1-opus';
 
-export type ProModelName = 'gpt-5.1-pro' | 'gpt-5-pro';
+export type ProModelName = 'gpt-5.1-pro' | 'gpt-5-pro' | 'claude-4.1-opus';
 
 export type ReasoningEffort = 'low' | 'medium' | 'high';
 
@@ -26,6 +33,10 @@ export interface ModelConfig {
     outputPerToken: number;
   } | null;
   reasoning: { effort: ReasoningEffort } | null;
+  /** Set to false for providers that do not support the background job flow. */
+  supportsBackground?: boolean;
+  /** Set to false for providers where server-side search/tools are not mapped. */
+  supportsSearch?: boolean;
 }
 
 export interface FileContent {

@@ -1,3 +1,14 @@
+---
+title: Anthropic (Claude) Integration
+status: planned
+date: 2025-11-20
+---
+
+title: Anthropic (Claude) Integration
+status: planned
+date: 2025-11-20
+---
+
 # Anthropic (Claude) Integration Plan
 
 Status: **planned** (November 20, 2025)  
@@ -11,6 +22,7 @@ Scope: Add API support for Claude 4.5 Sonnet and Claude 4.1 Opus to Oracle CLI.
 ## Requirements
 - Environment: `ANTHROPIC_API_KEY` (required), `ANTHROPIC_BASE_URL` (optional; defaults to `https://api.anthropic.com`).
 - Engine: **API only**. Browser mode is blocked for Claude.
+- Long runs: Claude 4.1 Opus is treated as pro-tier (can run up to ~60 minutes); Sonnet 4.5 typically replies within a couple of minutes.
 - Tokenizer: `@anthropic-ai/tokenizer` (wrapped to accept Oracle’s array inputs). Estimates are approximate; rely on API `usage` for actual billing.
 
 ## Planned CLI Behavior

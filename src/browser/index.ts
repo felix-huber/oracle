@@ -223,9 +223,6 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
     const durationMs = Date.now() - startedAt;
     const answerChars = answerText.length;
     const answerTokens = estimateTokenCount(answerMarkdown);
-    if (connectionClosedUnexpectedly) {
-      throw new Error('Chrome window closed before oracle finished. Please keep it open until completion.');
-    }
     return {
       answerText,
       answerMarkdown,

@@ -90,6 +90,17 @@ describe('resolveRunOptionsFromConfig', () => {
     expect(runOptions.baseUrl).toBe('https://env.example/v2');
   });
 
+  it('uses ANTHROPIC_BASE_URL env when model is claude', () => {
+    // biome-ignore lint/style/useNamingConvention: env var naming follows provider
+    const env = { ANTHROPIC_BASE_URL: 'https://claude.example/v1' } as NodeJS.ProcessEnv;
+    const { runOptions } = resolveRunOptionsFromConfig({
+      prompt: basePrompt,
+      model: 'claude-4.5-sonnet',
+      env,
+    });
+    expect(runOptions.baseUrl).toBe('https://claude.example/v1');
+  });
+
   it('forces api engine for gemini when engine is auto-detected', () => {
     const { runOptions, resolvedEngine } = resolveRunOptionsFromConfig({
       prompt: basePrompt,
@@ -146,6 +157,17 @@ describe('resolveRunOptionsFromConfig', () => {
       engine: 'browser',
     });
     expect(resolvedEngine).toBe('api');
+  });
+
+  it('coerces browser engine to api for claude models', () => {
+    const { resolvedEngine, engineCoercedToApi, runOptions } = resolveRunOptionsFromConfig({
+      prompt: basePrompt,
+      model: 'claude-4.1-opus',
+      engine: 'browser',
+    });
+    expect(resolvedEngine).toBe('api');
+    expect(engineCoercedToApi).toBe(true);
+    expect(runOptions.model).toBe('claude-4.1-opus');
   });
 });
 

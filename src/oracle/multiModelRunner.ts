@@ -12,6 +12,7 @@ import {
 } from '../oracle.js';
 import type { SessionStore } from '../sessionStore.js';
 import { sessionStore } from '../sessionStore.js';
+import { MODEL_CONFIGS, PRO_MODELS } from './config.js';
 
 export interface MultiModelRunParams {
   sessionMeta: SessionMetadata;
@@ -109,6 +110,7 @@ function startModelExecution({
     model,
     models: undefined,
     sessionId: `${sessionMeta.id}:${model}`,
+    background: resolvePerModelBackground(runOptions, model),
   };
   const perModelLog = (message?: string): void => {
     logWriter.logLine(message ?? '');
@@ -175,6 +177,15 @@ function startModelExecution({
     });
 
   return { model, promise };
+}
+
+function resolvePerModelBackground(runOptions: RunOracleOptions, model: ModelName): boolean | undefined {
+  const config = MODEL_CONFIGS[model];
+  const adapterSupportsBackground = !model.startsWith('gemini') && !model.startsWith('claude');
+  const supportsBackground = config?.supportsBackground !== false && adapterSupportsBackground;
+  if (!supportsBackground) return false;
+  const isPro = PRO_MODELS.has(model as Parameters<typeof PRO_MODELS.has>[0]);
+  return runOptions.background ?? isPro;
 }
 
 async function describeLog(

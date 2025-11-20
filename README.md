@@ -11,11 +11,12 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"></a>
 </p>
 
-Oracle gives your agents a simple, reliable way to **bundle a prompt plus the right files and hand them to another AI**. It currently speaks GPT-5.1 Pro (new default), GPT-5.1 Codex (API-only), and GPT-5.1; Pro and Codex Max runs can take up to an hour and often return remarkably strong answers.
+Oracle gives your agents a simple, reliable way to **bundle a prompt plus the right files and hand them to another AI**. It currently speaks GPT-5.1 Pro (new default), GPT-5.1 Codex (API-only), GPT-5.1, and Anthropic Claude (4.5 Sonnet, 4.1 Opus — API-only). GPT-5.1 Pro and Claude 4.1 Opus may run for up to an hour; the other models typically finish within a couple of minutes.
 
 ## Two engines, one CLI
 
 - **API engine** — Calls the OpenAI Responses API. Needs `OPENAI_API_KEY`.
+- **Anthropic (Claude)** — Also available via the API engine with `ANTHROPIC_API_KEY` (no browser mode; search/background disabled for Claude).
 - **Browser engine** — Automates ChatGPT in Chrome so you can use your Pro account directly. Toggle with `--engine browser`; no API key required.
   - Duration flags such as `--browser-timeout` / `--browser-input-timeout` accept `ms`, `s`, `m`, or `h` (and you can chain them: `1h2m10s`). Defaults are 20 m / 30 s.
 - **GPT-5.1 Codex** — `gpt-5.1-codex` (high reasoning) is available today via API. Codex Max isn’t exposed via API yet; once OpenAI flips the switch we’ll wire it up here. Codex models require `--engine api`.
@@ -85,6 +86,8 @@ oracle session <id>                 # replay a run locally
 - **Flexible file selection** — Glob patterns and `!` excludes let you scoop up or skip files without scripting.
 - **Pro-friendly** — GPT-5.1 Pro background runs stay alive for ~10 minutes with reconnection + token/cost tracking.
 - **Two paths, one UX** — API or browser, same flags and session logs.
+- **Claude support** — API-only Sonnet 4.5 / Opus 4.1 with cost tracking; search/background disabled until Anthropic exposes equivalents.
+- **Cost transparency** — Claude cost is marked “approx” since prompt-caching rates aren’t surfaced by the API; GPT models show exact estimates.
 - **Search on by default** — The model can ground answers with fresh citations.
 - **File safety** — Per-file token accounting and size guards; `--files-report` shows exactly what you’re sending.
 - **Readable previews** — `--preview` / `--render-markdown` let you inspect the bundle before spending.
@@ -100,7 +103,7 @@ Put per-user defaults in `~/.oracle/config.json` (parsed as JSON5, so comments/t
 | `-p, --prompt <text>` | Required prompt. |
 | `-f, --file <paths...>` | Attach files/dirs (supports globs and `!` excludes). |
 | `-e, --engine <api\|browser>` | Choose API or browser automation. Omitted: API when `OPENAI_API_KEY` is set, otherwise browser. |
-| `-m, --model <name>` | `gpt-5.1-pro` (default), `gpt-5.1`, or `gpt-5.1-codex` (API-only). |
+| `-m, --model <name>` | `gpt-5.1-pro` (default), `gpt-5.1`, `gpt-5.1-codex` (API-only), `claude-4.5-sonnet`, `claude-4.1-opus` (API-only). |
 | `--base-url <url>` | Point the API engine at any OpenAI-compatible endpoint (LiteLLM, Azure, etc.). |
 | `--azure-endpoint <url>` | Use Azure OpenAI (switches client automatically). |
 | `--files-report` | Print per-file token usage. |

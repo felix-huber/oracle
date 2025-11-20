@@ -43,14 +43,15 @@ export function resolveRunOptionsFromConfig({
       : resolveApiModel(cliModelArg);
   const isGemini = resolvedModel.startsWith('gemini');
   const isCodex = resolvedModel.startsWith('gpt-5.1-codex');
+  const isAnthropic = resolvedModel.startsWith('claude');
   // Keep the resolved model id alongside the canonical model name so we can log
   // and dispatch the exact identifier (useful for Gemini preview aliases).
   const effectiveModelId = isGemini ? resolveGeminiModelId(resolvedModel) : resolvedModel;
 
-  const engineCoercedToApi = (isGemini || isCodex) && browserRequested;
-  // When Gemini or Codex is selected, always force API engine (overrides config/env auto browser).
+  const engineCoercedToApi = (isGemini || isCodex || isAnthropic) && browserRequested;
+  // When Gemini, Codex, or Anthropic is selected, always force API engine (overrides config/env auto browser).
   const fixedEngine: EngineMode =
-    isGemini || isCodex || normalizedRequestedModels.length > 0 ? 'api' : resolvedEngine;
+    isGemini || isCodex || isAnthropic || normalizedRequestedModels.length > 0 ? 'api' : resolvedEngine;
 
   const promptWithSuffix =
     userConfig?.promptSuffix && userConfig.promptSuffix.trim().length > 0
@@ -62,7 +63,9 @@ export function resolveRunOptionsFromConfig({
   const heartbeatIntervalMs =
     userConfig?.heartbeatSeconds !== undefined ? userConfig.heartbeatSeconds * 1000 : 30_000;
 
-  const baseUrl = normalizeBaseUrl(userConfig?.apiBaseUrl ?? env.OPENAI_BASE_URL);
+  const baseUrl = normalizeBaseUrl(
+    userConfig?.apiBaseUrl ?? (isAnthropic ? env.ANTHROPIC_BASE_URL : env.OPENAI_BASE_URL),
+  );
   const uniqueMultiModels: ModelName[] =
     normalizedRequestedModels.length > 0
       ? Array.from(new Set(normalizedRequestedModels.map((entry) => resolveApiModel(entry))))

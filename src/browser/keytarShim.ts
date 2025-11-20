@@ -50,5 +50,3 @@ keytar.getPassword = async (service: string, account: string): Promise<string | 
   }
   return null;
 };
-
-export {};

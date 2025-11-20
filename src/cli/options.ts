@@ -123,6 +123,15 @@ export function resolveApiModel(modelValue: string): ModelName {
   if (normalized.includes('5-pro') && !normalized.includes('5.1')) {
     return 'gpt-5-pro';
   }
+  if (normalized.includes('opus')) {
+    return 'claude-4.1-opus';
+  }
+  if (normalized.includes('sonnet')) {
+    return 'claude-4.5-sonnet';
+  }
+  if (normalized.includes('claude')) {
+    return normalized.includes('4.1') ? 'claude-4.1-opus' : 'claude-4.5-sonnet';
+  }
   if (normalized.includes('5.1') && normalized.includes('pro')) {
     return 'gpt-5.1-pro';
   }
@@ -153,6 +162,15 @@ export function inferModelFromLabel(modelValue: string): ModelName {
   }
   if (normalized.includes('gpt-5') && normalized.includes('pro') && !normalized.includes('5.1')) {
     return 'gpt-5-pro';
+  }
+  if (normalized.includes('opus')) {
+    return 'claude-4.1-opus';
+  }
+  if (normalized.includes('sonnet')) {
+    return 'claude-4.5-sonnet';
+  }
+  if (normalized.includes('claude')) {
+    return normalized.includes('4.1') ? 'claude-4.1-opus' : 'claude-4.5-sonnet';
   }
   if (normalized.includes('codex')) {
     return 'gpt-5.1-codex';

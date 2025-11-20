@@ -48,7 +48,9 @@ function normalizeCookie(
     domain?: string;
     path?: string;
     expires?: number;
+    // biome-ignore lint/style/useNamingConvention: matches Chrome cookie fields
     Secure?: boolean;
+    // biome-ignore lint/style/useNamingConvention: matches Chrome cookie fields
     HttpOnly?: boolean;
   },
   fallbackHost: string,
@@ -189,7 +191,7 @@ function stripQuery(url: string): string {
   }
 }
 
-export const __test__ = {
+export const testExports = {
   normalizeExpiration,
   cleanValue,
   looksLikePath,

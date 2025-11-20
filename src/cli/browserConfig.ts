@@ -73,12 +73,12 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
     headless: undefined, // disable headless; Cloudflare blocks it
     keepBrowser: options.browserKeepBrowser ? true : undefined,
     hideWindow: options.browserHideWindow ? true : undefined,
-    desiredModel: shouldUseOverride ? desiredModelOverride : mapModelToBrowserLabel(options.model),
-    debug: options.verbose ? true : undefined,
-    // Allow cookie failures by default so runs can continue without Chrome/Keychain secrets.
-    allowCookieErrors: options.browserAllowCookieErrors ? true : true,
-    remoteChrome,
-  };
+  desiredModel: shouldUseOverride ? desiredModelOverride : mapModelToBrowserLabel(options.model),
+  debug: options.verbose ? true : undefined,
+  // Allow cookie failures by default so runs can continue without Chrome/Keychain secrets.
+  allowCookieErrors: options.browserAllowCookieErrors ?? true,
+  remoteChrome,
+};
 }
 
 export function mapModelToBrowserLabel(model: ModelName): string {

@@ -3,7 +3,7 @@
 Status: **in progress** (November 19, 2025)  
 Owner: Oracle CLI
 
-This document describes the planned architecture for Oracle’s upcoming “multi-model” mode. The goal is to let a single CLI invocation fan out the same prompt/files to multiple foundation models (OpenAI GPT-5 variants, Gemini, future Anthropic entries, etc.), monitor them in parallel, and capture the outputs side-by-side.
+This document describes the planned architecture for Oracle’s upcoming “multi-model” mode. The goal is to let a single CLI invocation fan out the same prompt/files to multiple foundation models (OpenAI GPT-5 variants, Gemini, Anthropic Claude, etc.), monitor them in parallel, and capture the outputs side-by-side.
 
 The plan below is intentionally detailed so we can coordinate code changes across the CLI, session store, and user documentation.
 
@@ -142,3 +142,8 @@ The overall session status is implicit: if any model is `running`, we render the
 3. Should `oracle session --status` include cost totals per model, or keep the current compact “model + icon” display?
 
 Feedback welcome—this document should evolve alongside the implementation.
+---
+title: Multi-Model Execution
+status: in-progress
+date: 2025-11-19
+---

@@ -110,7 +110,8 @@ function buildMessage(payload: NotificationContent, answerPreview?: string): str
     const cost = payload.costUsd ?? inferCost(payload);
     if (cost !== undefined) {
       // Round to $0.00 for a concise toast.
-      parts.push(formatUSD(Number(cost.toFixed(2))));
+      const approx = payload.model?.startsWith('claude');
+      parts.push(`${formatUSD(Number(cost.toFixed(2)))}${approx ? ' (approx)' : ''}`);
     }
   }
 

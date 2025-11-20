@@ -64,7 +64,13 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
     client,
     wait = defaultWait,
   } = deps;
-  const baseUrl = options.baseUrl?.trim() || process.env.OPENAI_BASE_URL?.trim();
+  const isGptModel = options.model.startsWith('gpt');
+  const isGeminiModel = options.model.startsWith('gemini');
+  const isClaudeModel = options.model.startsWith('claude');
+  const baseUrl =
+    options.baseUrl?.trim() ||
+    (isClaudeModel ? process.env.ANTHROPIC_BASE_URL?.trim() : process.env.OPENAI_BASE_URL?.trim());
+  const toolSupport = toolSupportForModel(options.model);
 
   const logVerbose = (message: string): void => {
     if (options.verbose) {
@@ -82,10 +88,19 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
     if (model.startsWith('gemini')) {
       return optionsApiKey ?? process.env.GEMINI_API_KEY;
     }
+    if (model.startsWith('claude')) {
+      return optionsApiKey ?? process.env.ANTHROPIC_API_KEY;
+    }
     return undefined;
   };
 
-  const envVar = options.model.startsWith('gpt') ? 'OPENAI_API_KEY' : 'GEMINI_API_KEY';
+  const envVar = isGptModel
+    ? 'OPENAI_API_KEY'
+    : isGeminiModel
+      ? 'GEMINI_API_KEY'
+      : isClaudeModel
+        ? 'ANTHROPIC_API_KEY'
+        : 'OPENAI_API_KEY';
   const apiKey = getApiKeyForModel(options.model);
   if (!apiKey) {
     throw new PromptValidationError(`Missing ${envVar}. Set it via the environment or a .env file.`, {
@@ -111,15 +126,27 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
       { model: options.model },
     );
   }
+  // Pro-tier models (e.g., GPT-5.1 Pro, Claude 4.1 Opus) may run longer.
   const isLongRunningModel = isProTierModel;
-  const useBackground = options.background ?? isLongRunningModel;
+  const adapterSupportsBackground = !isGeminiModel && !isClaudeModel;
+  const supportsBackground = modelConfig.supportsBackground !== false && adapterSupportsBackground;
+  const useBackground = supportsBackground && (options.background ?? isLongRunningModel);
 
   const inputTokenBudget = options.maxInput ?? modelConfig.inputLimit;
   const files = await readFiles(options.file ?? [], { cwd, fsModule });
-  const searchEnabled = options.search !== false;
+  const searchAllowed = modelConfig.supportsSearch !== false && toolSupport.search;
+  const searchEnabled = searchAllowed && options.search !== false;
   logVerbose(`cwd: ${cwd}`);
   let pendingNoFilesTip: string | null = null;
   let pendingShortPromptTip: string | null = null;
+  let pendingSearchTip: string | null = null;
+  let pendingBackgroundTip: string | null = null;
+  if (!searchAllowed && options.search !== false) {
+    pendingSearchTip = 'Search tool is not supported for this model; ignoring --search.';
+  }
+  if (!supportsBackground && options.background) {
+    pendingBackgroundTip = 'Background mode is not supported for this model; running in streaming mode instead.';
+  }
   if (files.length > 0) {
     const displayPaths = files
       .map((file) => path.relative(cwd, file.path) || file.path)
@@ -189,8 +216,14 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
         options.model.startsWith('gemini') && effectiveModelId !== modelConfig.model ? ` (resolved: ${effectiveModelId})` : '';
       log(dim(`Using ${envVar}=${maskedKey} for model ${modelConfig.model}${resolvedSuffix}`));
     }
-    if (baseUrl) {
+    if (baseUrl && !isGeminiModel) {
       log(dim(`Base URL: ${formatBaseUrlForLog(baseUrl)}`));
+    }
+    if (pendingSearchTip) {
+      log(dim(pendingSearchTip));
+    }
+    if (pendingBackgroundTip) {
+      log(dim(pendingBackgroundTip));
     }
     if (pendingNoFilesTip) {
       log(dim(pendingNoFilesTip));
@@ -422,7 +455,8 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
   const modelLabel = effortLabel ? `${modelConfig.model}[${effortLabel}]` : modelConfig.model;
   statsParts.push(modelLabel);
   if (cost != null) {
-    statsParts.push(formatUSD(cost));
+    const costLabel = `${formatUSD(cost)}${isClaudeModel ? ' (approx)' : ''}`;
+    statsParts.push(costLabel);
   } else {
     statsParts.push('cost=N/A');
   }
@@ -670,3 +704,4 @@ function asRetryableTransportError(error: unknown): OracleTransportError | null 
   }
   return null;
 }
+import { toolSupportForModel } from './tools.js';

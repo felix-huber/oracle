@@ -7,13 +7,21 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Remote Chrome automation: pass `--remote-chrome <host:port>` (IPv6 supported via `[host]:port`) to reuse an existing browser session on another machine, including remote attachment uploads and improved validation errors.
 - Browser engine can now target Chromium/Edge by pairing `--browser-chrome-path` with the new `--browser-cookie-path` (also configurable via `browser.chromePath` / `browser.chromeCookiePath`). See the new [docs/chromium-forks.md](docs/chromium-forks.md) for OS-specific paths and setup steps.
- - Remote browser service: `oracle serve` now launches Chrome plus an HTTP/SSE host, and `--remote-host` / `--remote-token` let another machine run browser sessions end-to-end. Cookie shipping from the client is disabled; the service reuses the host’s own ChatGPT cookies and prompts for login once if none are present.
+- Remote browser service: `oracle serve` now launches Chrome plus an HTTP/SSE host, and `--remote-host` / `--remote-token` let another machine run browser sessions end-to-end. Cookie shipping from the client is disabled; the service reuses the host’s own ChatGPT cookies and prompts for login once if none are present.
 - Multi-model API runner: orchestrates multiple API models in one command and aggregates usage/cost; browser engine stays single-model.
 - GPT-5.1 Codex (API-only) now works end-to-end with high reasoning; `--model gpt-5.1-codex` forces the API engine automatically so browser runs keep targeting ChatGPT Instant.
 - GPT-5.1 Codex Max isn’t available via API yet. As soon as OpenAI opens the endpoint we’ll add it to `MODEL_CONFIGS`, but for now the CLI rejects that model name.
 - GPT-5.1 Pro API support; it’s the new default model.
 - Added `gpt-5-pro` (aliases: `gpt-5`, `gpt-5.0-pro`) alongside GPT-5.1 Pro for accounts that are still on the earlier Pro rollout.
+- Anthropic Claude API support (API-only): `claude-4.5-sonnet` and `claude-4.1-opus` with `ANTHROPIC_API_KEY`/`ANTHROPIC_BASE_URL` (search disabled; background runs forced off; Opus treated as pro-tier).
 - Duplicate prompt guard remains active: Oracle blocks a second run when the exact prompt is already running (we briefly removed this note during unreleased edits, but the behavior never left production).
+<<<<<<< HEAD
+- Added `gpt-5-pro` (aliases: `gpt-5`, `gpt-5.0-pro`) alongside GPT-5.1 Pro for accounts that are still on the earlier Pro rollout.
+- Duplicate prompt guard remains active: Oracle blocks a second run when the exact prompt is already running (we briefly removed this note during unreleased edits, but the behavior never left production).
+||||||| parent of dd52fc49 (feat: add anthropic models and tooling)
+=======
+- Anthropic Claude API support (API-only): `claude-4.5-sonnet` and `claude-4.1-opus` with `ANTHROPIC_API_KEY`/`ANTHROPIC_BASE_URL` (search disabled; background runs forced off; Opus treated as pro-tier).
+>>>>>>> dd52fc49 (feat: add anthropic models and tooling)
 
 ### Changed
 - Cookie sync covers Chrome, Chromium, Edge, Brave, and Vivaldi profiles; targets chatgpt.com, chat.openai.com, and atlas.openai.com.

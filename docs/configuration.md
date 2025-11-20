@@ -44,6 +44,8 @@ CLI flags → `config.json` → environment → built-in defaults.
 
 - `engine`, `model`, `search`, `filesReport`, `heartbeatSeconds`, and `apiBaseUrl` in `config.json` override the auto-detected values unless explicitly set on the CLI.
 - `OPENAI_API_KEY` only influences engine selection when neither the CLI nor `config.json` specify an engine (API when present, otherwise browser).
+- `ANTHROPIC_API_KEY` is required for Claude models; optionally set `ANTHROPIC_BASE_URL` (defaults to `https://api.anthropic.com`).
+- `apiBaseUrl` / `--base-url` apply to the active provider (OpenAI for GPT models, Anthropic for Claude).
 - `ORACLE_NOTIFY*` env vars still layer on top of the config’s `notify` block.
 - `sessionRetentionHours` controls the default value for `--retain-hours`. When unset, `ORACLE_RETAIN_HOURS` (if present) becomes the fallback, and the CLI flag still wins over both.
 
@@ -66,3 +68,8 @@ Under the hood, pruning removes entire session directories (metadata + logs). Th
 - `--timeout <seconds|auto>` controls the overall API deadline for a run.
 - Defaults: `auto` = 60 m for `gpt-5.1-pro`; non-pro API models use `120s` if you don’t set a value.
 - Heartbeat messages print the live remaining time so you can see when the client-side deadline will fire.
+---
+title: Local configuration
+status: reference
+date: 2025-11-19
+---

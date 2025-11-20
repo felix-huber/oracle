@@ -4,7 +4,7 @@ import { PRO_MODELS } from '../oracle.js';
 
 export function shouldDetachSession({
   // Params kept for future policy tweaks; currently only model/disableDetachEnv matter.
-  engine: _engine,
+  engine,
   model,
   waitPreference: _waitPreference,
   disableDetachEnv,
@@ -16,6 +16,6 @@ export function shouldDetachSession({
 }): boolean {
   if (disableDetachEnv) return false;
   // Only Pro-tier API runs should start detached by default; browser runs stay inline so failures surface.
-  if (PRO_MODELS.has(model as Parameters<typeof PRO_MODELS.has>[0]) && _engine === 'api') return true;
+  if (PRO_MODELS.has(model as Parameters<typeof PRO_MODELS.has>[0]) && engine === 'api') return true;
   return false;
 }
