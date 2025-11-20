@@ -28,6 +28,36 @@ export async function ensureNotBlocked(Runtime: ChromeClient['Runtime'], headles
   }
 }
 
+const LOGIN_CHECK_TIMEOUT_MS = 5_000;
+
+export async function ensureLoggedIn(
+  Runtime: ChromeClient['Runtime'],
+  logger: BrowserLogger,
+  options: { appliedCookies?: number | null; remoteSession?: boolean } = {},
+) {
+  const outcome = await Runtime.evaluate({
+    expression: buildLoginProbeExpression(LOGIN_CHECK_TIMEOUT_MS),
+    awaitPromise: true,
+    returnByValue: true,
+  });
+  const probe = normalizeLoginProbe(outcome.result?.value);
+  if (probe.ok && probe.status > 0 && probe.status < 400) {
+    const urlLabel = probe.url ?? '/backend-api/me';
+    logger(`Login check passed (HTTP ${probe.status} from ${urlLabel})`);
+    return;
+  }
+
+  const statusLabel = probe.status ? ` (HTTP ${probe.status})` : '';
+  const errorLabel = probe.error ? ` (${probe.error})` : '';
+  const cookieHint = options.remoteSession
+    ? 'The remote Chrome session is not signed into ChatGPT. Sign in there, then rerun.'
+    : (options.appliedCookies ?? 0) === 0
+      ? 'No ChatGPT cookies were applied; sign in to chatgpt.com in Chrome or pass inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON).'
+      : 'ChatGPT login appears missing; open chatgpt.com in Chrome to refresh the session or provide inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON).';
+
+  throw new Error(`ChatGPT session not detected${statusLabel}. ${cookieHint}${errorLabel}`);
+}
+
 export async function ensurePromptReady(Runtime: ChromeClient['Runtime'], timeoutMs: number, logger: BrowserLogger) {
   const ready = await waitForPrompt(Runtime, timeoutMs);
   if (!ready) {
@@ -91,3 +121,75 @@ async function isCloudflareInterstitial(Runtime: ChromeClient['Runtime']): Promi
   return Boolean(result.value);
 }
 
+type LoginProbeResult = {
+  ok: boolean;
+  status: number;
+  url?: string | null;
+  redirected?: boolean;
+  error?: string | null;
+  pageUrl?: string | null;
+};
+
+function buildLoginProbeExpression(timeoutMs: number): string {
+  return `(() => {
+    const ENDPOINTS = ['/backend-api/me', '/backend-api/models'];
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort('timeout'), ${timeoutMs});
+    const pageUrl = typeof location === 'object' && location?.href ? location.href : null;
+
+    const probeEndpoint = async (endpoint) => {
+      try {
+        const response = await fetch(endpoint, { credentials: 'include', signal: controller.signal });
+        return {
+          ok: response.ok,
+          status: response.status,
+          redirected: response.redirected,
+          url: response.url || endpoint,
+          pageUrl,
+        };
+      } catch (error) {
+        const message = error?.message ?? String(error);
+        return { ok: false, status: 0, error: message, url: endpoint, pageUrl };
+      }
+    };
+
+    const run = async () => {
+      let last = null;
+      for (const endpoint of ENDPOINTS) {
+        last = await probeEndpoint(endpoint);
+        if (last.ok) {
+          return last;
+        }
+        if (typeof last.status === 'number' && last.status !== 404 && last.status !== 0) {
+          return last;
+        }
+      }
+      return last ?? { ok: false, status: 0, url: ENDPOINTS[0], pageUrl };
+    };
+
+    return run().finally(() => clearTimeout(timer));
+  })()`;
+}
+
+function normalizeLoginProbe(raw: unknown): LoginProbeResult {
+  if (!raw || typeof raw !== 'object') {
+    return { ok: false, status: 0 };
+  }
+  const value = raw as Record<string, unknown>;
+  const statusRaw = value.status;
+  const status =
+    typeof statusRaw === 'number'
+      ? statusRaw
+      : typeof statusRaw === 'string' && !Number.isNaN(Number(statusRaw))
+        ? Number(statusRaw)
+        : 0;
+
+  return {
+    ok: Boolean(value.ok),
+    status: Number.isFinite(status) ? (status as number) : 0,
+    url: typeof value.url === 'string' ? value.url : null,
+    redirected: Boolean(value.redirected),
+    error: typeof value.error === 'string' ? value.error : null,
+    pageUrl: typeof value.pageUrl === 'string' ? value.pageUrl : null,
+  };
+}

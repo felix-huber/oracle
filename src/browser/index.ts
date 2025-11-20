@@ -14,6 +14,7 @@ import { syncCookies } from './cookies.js';
 import {
   navigateToChatGPT,
   ensureNotBlocked,
+  ensureLoggedIn,
   ensurePromptReady,
   ensureModelSelection,
   submitPrompt,
@@ -140,6 +141,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
 
     await navigateToChatGPT(Page, Runtime, config.url, logger);
     await ensureNotBlocked(Runtime, config.headless, logger);
+    await ensureLoggedIn(Runtime, logger, { appliedCookies });
     await ensurePromptReady(Runtime, config.inputTimeoutMs, logger);
     logger(`Prompt textarea ready (initial focus, ${promptText.length.toLocaleString()} chars queued)`);
     if (config.desiredModel) {
@@ -310,6 +312,7 @@ async function runRemoteBrowserMode(
 
     await navigateToChatGPT(Page, Runtime, config.url, logger);
     await ensureNotBlocked(Runtime, config.headless, logger);
+    await ensureLoggedIn(Runtime, logger, { remoteSession: true });
     await ensurePromptReady(Runtime, config.inputTimeoutMs, logger);
     logger(`Prompt textarea ready (initial focus, ${promptText.length.toLocaleString()} chars queued)`);
 
