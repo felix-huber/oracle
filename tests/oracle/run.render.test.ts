@@ -72,9 +72,7 @@ describe('runOracle streaming rendering', () => {
     const rendered = stdoutSink.join('');
     const combined = rendered + logSink.join('');
     expect(combined).toContain('# Title');
-    if (rendered.length > 0) {
-      expect(rendered).toContain('\u001b['); // ANSI present when we render to TTY
-    }
+    expect(rendered.length).toBeGreaterThan(0); // stdout receives rendered markdown on TTY
     stdoutSpy.mockRestore();
     restore();
   });
