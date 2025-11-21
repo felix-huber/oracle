@@ -83,6 +83,7 @@ npx -y @steipete/oracle oracle-mcp
 - Azure endpoints supported via `--azure-endpoint/--azure-deployment/--azure-api-version` or `AZURE_OPENAI_*` envs.
 - File safety: globs/excludes, size guards, `--files-report`.
 - Sessions you can replay (`oracle status`, `oracle session <id> --render`).
+- Session logs and bundles live in `~/.oracle/sessions` (override with `ORACLE_HOME_DIR`).
 
 ## Flags you’ll actually use
 
