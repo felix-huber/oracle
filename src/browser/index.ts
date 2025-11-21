@@ -242,17 +242,14 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
     }
     if (answerMarkdown.trim() === promptText.trim()) {
       const deadline = Date.now() + 8_000;
-      let bestText = '';
-      let bestHtml: string | undefined;
+      let bestText: string | null = null;
       let stableCount = 0;
       while (Date.now() < deadline) {
         const snapshot = await readAssistantSnapshot(Runtime).catch(() => null);
         const text = typeof snapshot?.text === 'string' ? snapshot.text.trim() : '';
-        const html = typeof snapshot?.html === 'string' ? snapshot.html : undefined;
         if (text && text !== promptText.trim()) {
-          if (text.length > bestText.length) {
+          if (!bestText || text.length > bestText.length) {
             bestText = text;
-            bestHtml = html;
             stableCount = 0;
           } else if (text === bestText) {
             stableCount += 1;

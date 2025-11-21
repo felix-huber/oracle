@@ -578,15 +578,45 @@ interface AssistantSnapshot {
   turnId?: string | null;
 }
 
+const LANGUAGE_TAGS = new Set(
+  [
+    'copy code',
+    'markdown',
+    'bash',
+    'sh',
+    'shell',
+    'javascript',
+    'typescript',
+    'ts',
+    'js',
+    'yaml',
+    'json',
+    'python',
+    'py',
+    'go',
+    'java',
+    'c',
+    'c++',
+    'cpp',
+    'c#',
+    'php',
+    'ruby',
+    'rust',
+    'swift',
+    'kotlin',
+    'html',
+    'css',
+    'sql',
+    'text',
+  ].map((token) => token.toLowerCase()),
+);
+
 function cleanAssistantText(text: string): string {
   const normalized = text.replace(/\u00a0/g, ' ');
   const lines = normalized.split(/\r?\n/);
   const filtered = lines.filter((line) => {
     const trimmed = line.trim().toLowerCase();
-    if (trimmed === 'copy code') return false;
-    if (trimmed === 'markdown') return false;
-    if (trimmed === 'bash' || trimmed === 'javascript' || trimmed === 'yaml' || trimmed === 'json') return false;
-    if (/^[a-z][a-z0-9.+#-]{0,11}$/.test(trimmed)) return false;
+    if (LANGUAGE_TAGS.has(trimmed)) return false;
     return true;
   });
   return filtered.join('\n').replace(/\n{3,}/g, '\n\n').trim();

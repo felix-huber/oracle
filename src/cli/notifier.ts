@@ -326,7 +326,7 @@ async function runXattrStrip(target: string): Promise<void> {
       },
     );
     child.on('error', (error: NodeJS.ErrnoException) => {
-        if (error && error.code !== 'ENOENT') {
+      if (error && error.code !== 'ENOENT') {
         reject(error);
       } else {
         resolve();
