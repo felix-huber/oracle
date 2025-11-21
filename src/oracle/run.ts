@@ -60,6 +60,7 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
     client,
     wait = defaultWait,
   } = deps;
+  const writingToStdout = deps.write === undefined;
   const baseUrl = options.baseUrl?.trim() || process.env.OPENAI_BASE_URL?.trim();
 
   const logVerbose = (message: string): void => {
@@ -284,6 +285,7 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
   let response: OracleResponse | null = null;
   let elapsedMs = 0;
   let sawTextDelta = false;
+  const streamedChunks: string[] = [];
   let answerHeaderPrinted = false;
   const allowAnswerHeader = options.suppressAnswerHeader !== true;
   const timeoutExceeded = (): boolean => now() - runStart >= timeoutMs;
@@ -357,7 +359,12 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
             sawTextDelta = true;
             ensureAnswerHeader();
             if (!options.silent && typeof event.delta === 'string') {
-              write(event.delta);
+              streamedChunks.push(event.delta);
+              const shouldDeferRender = isTty && !renderPlain;
+              // When deferring render to after streaming, keep logs (non-stdout sinks) hot but avoid live stdout spam.
+              if (!shouldDeferRender || !writingToStdout) {
+                write(event.delta);
+              }
             }
           }
         }
@@ -384,8 +391,24 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
 
   // biome-ignore lint/nursery/noUnnecessaryConditions: we only add spacing when any streamed text was printed
   if (sawTextDelta && !options.silent) {
-    write('\n');
-    log('');
+    const fullStreamedText = streamedChunks.join('');
+    const shouldRenderAfterStream = isTty && !renderPlain;
+    if (shouldRenderAfterStream) {
+      if (!writingToStdout && fullStreamedText.length > 0) {
+        write(fullStreamedText);
+      }
+      const rendered = fullStreamedText ? renderMarkdownAnsi(fullStreamedText) : '';
+      if (rendered) {
+        process.stdout.write(rendered);
+        if (!rendered.endsWith('\n')) {
+          process.stdout.write('\n');
+        }
+      }
+      log('');
+    } else {
+      write('\n');
+      log('');
+    }
   }
 
   logVerbose(`Response status: ${response.status ?? 'completed'}`);
@@ -423,7 +446,9 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
   if (!options.silent) {
     // biome-ignore lint/nursery/noUnnecessaryConditions: flips true when streaming events arrive
     if (sawTextDelta) {
-      write('\n');
+      if (!isTty || renderPlain) {
+        write('\n');
+      }
     } else {
       ensureAnswerHeader();
       // Render markdown to ANSI in rich TTYs unless the caller opts out with --render-plain.
