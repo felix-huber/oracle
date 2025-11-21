@@ -45,7 +45,7 @@ describe('runOracle no-file tip', () => {
 });
 
 describe('api key logging', () => {
-  test('logs masked OPENAI_API_KEY', async () => {
+  test('logs masked OPENAI_API_KEY in verbose mode', async () => {
     const stream = new MockStream([], buildResponse());
     const client = new MockClient(stream);
     const logs: string[] = [];
@@ -54,6 +54,7 @@ describe('api key logging', () => {
         prompt: 'Key log test',
         model: 'gpt-5.1-pro',
         background: false,
+        verbose: true,
       },
       {
         apiKey: 'sk-supersecret-key-1234',
@@ -68,7 +69,7 @@ describe('api key logging', () => {
     expect(combined).not.toContain('supersecret');
   });
 
-  test('logs masked GEMINI_API_KEY when using gemini model', async () => {
+  test('logs masked GEMINI_API_KEY when using gemini model in verbose mode', async () => {
     const stream = new MockStream([], buildResponse());
     const client = new MockClient(stream);
     const logs: string[] = [];
@@ -77,6 +78,7 @@ describe('api key logging', () => {
         prompt: 'Key log test Gemini',
         model: 'gemini-3-pro',
         background: false,
+        verbose: true,
       },
       {
         apiKey: 'sk-gemini-secret-9999',

@@ -194,7 +194,7 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
       log(headerLine);
     }
     const maskedKey = maskApiKey(apiKey);
-    if (maskedKey) {
+    if (maskedKey && options.verbose) {
       const resolvedSuffix =
         effectiveModelId !== modelConfig.model ? ` (resolved: ${effectiveModelId})` : '';
       log(dim(`Using ${envVar}=${maskedKey} for model ${modelConfig.model}${resolvedSuffix}`));
