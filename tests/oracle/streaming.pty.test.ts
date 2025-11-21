@@ -3,20 +3,27 @@ import os from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
 import { randomInt } from 'node:crypto';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { spawn } from 'node:child_process';
 import { renderMarkdownAnsi } from '../../src/cli/markdownRenderer.js';
-
-const TSX_BIN = path.join(process.cwd(), 'node_modules', '.bin', 'tsx');
+import { build } from 'esbuild';
+const NODE_BIN = process.execPath;
 
 let ptyAvailable = true;
-let pty: typeof import('@homebridge/node-pty-prebuilt-multiarch').default | null = null;
+// biome-ignore lint/suspicious/noExplicitAny: third-party pty module ships without types
+let pty: any | null = null;
 try {
-  pty = (await import('@homebridge/node-pty-prebuilt-multiarch')).default;
+  // Prefer the new package, fall back to the legacy one used in some environments.
+  const mod = await import('@cdktf/node-pty-prebuilt-multiarch').catch(() => import('@homebridge/node-pty-prebuilt-multiarch'));
+  // biome-ignore lint/suspicious/noExplicitAny: third-party pty module ships without types
+  pty = (mod as any).default ?? mod;
 } catch {
   ptyAvailable = false;
 }
 
-const ptyDescribe = ptyAvailable ? describe : describe.skip;
+// Prefer to run PTY cases even on Node 25+; we prebundle the harness to ESM with esbuild and run plain `node`.
+const ptyRunnable = Boolean(pty);
+const ptyDescribe = ptyRunnable ? describe : describe.skip;
 
 /**
  * Spawn a tiny TS script inside a pseudo-TTY so runOracle believes it is on a rich terminal.
@@ -38,44 +45,61 @@ async function runPtyStreaming({
   if (!ptyAvailable || !pty) {
     throw new Error('PTY not available in this environment');
   }
-  const script = [
-    "import { runOracle } from './src/oracle/run.ts';",
-    "const chunks = JSON.parse(process.env.CHUNKS!);",
-    "const delays = JSON.parse(process.env.DELAYS || '[]');",
-    "const renderPlain = process.env.RENDER_PLAIN === '1';",
-    'const wait = (ms:number)=>new Promise((resolve)=>setTimeout(resolve, ms));',
-    'const full = chunks.join("");',
-    'const finalResponse = { id: "resp", status: "completed", usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 }, output: [{ type: "text", text: full }] };',
-    'const stream = {',
-    '  async *[Symbol.asyncIterator]() {',
-    '    for (let i = 0; i < chunks.length; i += 1) {',
-    '      if (delays[i]) await wait(Number(delays[i]));',
-    '      yield { type: "chunk", delta: chunks[i] };',
-    '    }',
-    '  },',
-    '  finalResponse: async () => finalResponse,',
-    '};',
-    'const clientFactory = () => ({ responses: { stream: async () => stream, create: async () => finalResponse, retrieve: async () => finalResponse } });',
-    'await runOracle({ prompt: "p", model: "gpt-5.1", search: false, renderPlain }, { clientFactory, write: (t) => { process.stdout.write(String(t)); return true; }, log: (m) => console.log(m ?? ""), wait });',
-  ].join('\n');
+  // Build a tiny ESM bundle on the fly; avoids loader flags and TLA issues in CJS.
+  const bundlePath = path.join(os.tmpdir(), `oracle-pty-${Date.now()}.mjs`);
+  const entry = `
+    import { runOracle } from '${path.posix.join(process.cwd(), 'src/oracle/run.ts').replace(/\\/g, '/')}';
+    const chunks = JSON.parse(process.env.CHUNKS);
+    const delays = JSON.parse(process.env.DELAYS || '[]');
+    const renderPlain = process.env.RENDER_PLAIN === '1';
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const full = chunks.join('');
+    const finalResponse = { id: 'resp', status: 'completed', usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 }, output: [{ type: 'text', text: full }] };
+    const stream = {
+      async *[Symbol.asyncIterator]() {
+        for (let i = 0; i < chunks.length; i += 1) {
+          if (delays[i]) await wait(Number(delays[i]));
+          yield { type: 'chunk', delta: chunks[i] };
+        }
+      },
+      finalResponse: async () => finalResponse,
+    };
+    const clientFactory = () => ({ responses: { stream: async () => stream, create: async () => finalResponse, retrieve: async () => finalResponse } });
+    await runOracle({ prompt: 'p', model: 'gpt-5.1', search: false, renderPlain }, { clientFactory, write: (t) => { process.stdout.write(String(t)); return true; }, log: (m) => console.log(m ?? ''), wait });
+  `;
+  await build({
+    stdin: { contents: entry, resolveDir: process.cwd(), sourcefile: 'pty-entry.ts' },
+    outfile: bundlePath,
+    bundle: true,
+    format: 'esm',
+    platform: 'node',
+    target: 'node18',
+    sourcemap: false,
+    write: true,
+  });
 
   const env = {
     ...process.env,
+    // biome-ignore lint/style/useNamingConvention: env keys intentionally uppercase
     CHUNKS: JSON.stringify(chunks),
+    // biome-ignore lint/style/useNamingConvention: env keys intentionally uppercase
     DELAYS: JSON.stringify(delays),
+    // biome-ignore lint/style/useNamingConvention: env keys intentionally uppercase
     RENDER_PLAIN: renderPlain ? '1' : '0',
     // Force color so we can assert ANSI when tty is present.
+    // biome-ignore lint/style/useNamingConvention: env keys intentionally uppercase
     FORCE_COLOR: '1',
-  };
+  } satisfies Record<string, string | undefined>;
 
-  const ps = pty.spawn(TSX_BIN, ['--eval', script], {
+  // Force ESM evaluation in the child (`--import tsx --input-type=module`) so top-level await works on Node 25+.
+  const ps = pty.spawn(NODE_BIN, [bundlePath], {
     cols: 100,
     rows: 40,
     env,
   });
 
   let output = '';
-  ps.onData((d) => {
+  ps.onData((d: string) => {
     output += d;
   });
 
@@ -86,8 +110,11 @@ async function runPtyStreaming({
     setTimeout(() => ps.write('\u0003'), interruptAfterMs);
   }
 
-  const [{ exitCode, signal }] = (await once(ps, 'exit')) as Array<{ exitCode: number | null; signal: string | null }>;
-  return { output, exitCode, signal };
+  const [exitCode, signal] = (await once(ps, 'exit')) as [number | null, number | null];
+  try {
+    await fs.promises.unlink(bundlePath);
+  } catch {}
+  return { output, exitCode, signal: signal == null ? null : signal.toString() };
 }
 
 ptyDescribe('runOracle streaming via PTY', () => {
@@ -129,12 +156,12 @@ ptyDescribe('runOracle streaming via PTY', () => {
       interruptAfterMs: 25,
     });
     expect(exitCode === 0).toBeFalsy(); // interrupted, not clean exit
-    expect(signal === 'SIGINT' || exitCode === 130).toBeTruthy();
+    expect(signal === '2' || exitCode === 130).toBeTruthy();
     expect(output.length).toBeGreaterThan(0);
   });
 
   it('prints once in non-TTY mode (no ANSI)', async () => {
-    const scriptPath = path.join(os.tmpdir(), `oracle-nontty-${Date.now()}.mjs`);
+    const scriptPath = path.join(os.tmpdir(), `oracle-nontty-${Date.now()}.ts`);
     const chunks = ['# Head\n', 'body'];
     const script = `
       import { runOracle } from '${path.posix.join(process.cwd(), 'src/oracle/run.ts').replace(/\\/g, '/')}';
@@ -144,17 +171,31 @@ ptyDescribe('runOracle streaming via PTY', () => {
       const clientFactory = () => ({ responses: { stream: async () => stream, create: async () => finalResponse, retrieve: async () => finalResponse } });
       await runOracle({ prompt: 'p', model: 'gpt-5.1', search: false }, { clientFactory, write: (t) => { process.stdout.write(String(t)); return true; }, log: () => {} });
     `;
-    fs.writeFileSync(scriptPath, script, 'utf8');
-    const proc = await import('node:child_process').then(({ spawn }) =>
-      spawn(process.execPath, ['--loader', 'tsx', scriptPath], { env: { ...process.env, FORCE_COLOR: '0' } }),
-    );
+    await build({
+      stdin: { contents: script, resolveDir: process.cwd(), sourcefile: 'nontty.ts' },
+      outfile: scriptPath,
+      bundle: true,
+      format: 'esm',
+      platform: 'node',
+      target: 'node18',
+      sourcemap: false,
+      write: true,
+    });
+    const proc = spawn(NODE_BIN, [scriptPath], {
+      // biome-ignore lint/style/useNamingConvention: env keys need to stay uppercase
+      env: { ...process.env, FORCE_COLOR: '0' },
+    });
     let stdout = '';
     proc.stdout.on('data', (d) => {
       stdout += String(d);
     });
+    let stderr = '';
+    proc.stderr.on('data', (d) => {
+      stderr += String(d);
+    });
     const code: number = await new Promise((resolve) => proc.on('close', resolve));
     fs.unlinkSync(scriptPath);
-    expect(code).toBe(0);
+    expect({ code, stderr }).toEqual({ code: 0, stderr: '' });
     expect(stdout).toContain('# Head');
     expect(stdout.match(/# Head/g)?.length).toBe(1);
     expect(stdout).not.toContain('\u001b[');

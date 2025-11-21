@@ -5,39 +5,43 @@
 ## Tools
 
 ### `consult`
-- Inputs: `prompt` (required), `files` (string[] globs), `model` (defaults to CLI), `engine` (`api`|`browser`, same auto-defaults as CLI), `slug?` (custom session slug).
-- Behavior: starts a session, runs it using the chosen engine, and returns the final output plus metadata. No prompt preview, no advanced browser toggles. Background handling follows CLI defaults (e.g., GPT‑5 Pro requests run in background automatically); not exposed as a tool option.
-- Logging: emits MCP logging notifications — line logs at `info`, chunk streams at `debug` (with byte sizes). If browser is unavailable (missing DISPLAY/CHROME_PATH or guardrails), the tool returns an error payload instead of running.
+- Inputs: `prompt` (required), `files?: string[]` (globs), `model?: string` (defaults to CLI), `engine?: "api" | "browser"` (CLI auto-defaults), `slug?: string`.
+- Behavior: starts a session, runs it with the chosen engine, returns final output + metadata. Background/foreground follows the CLI (e.g., GPT‑5 Pro detaches by default).
+- Logging: emits MCP logs (`info` per line, `debug` for streamed chunks with byte sizes). If browser prerequisites are missing, returns an error payload instead of running.
 
 ### `sessions`
-- Inputs: `{id?, hours?, limit?, includeAll?, detail?}` mirroring `oracle status`.
-- Behavior: without `id`, returns a bounded list of recent sessions. With `id`/slug, returns a summary row by default; set `detail: true` to fetch full metadata, log, and stored request body so you can reload or audit a specific session.
+- Inputs: `{id?, hours?, limit?, includeAll?, detail?}` mirroring `oracle status` / `oracle session`.
+- Behavior: without `id`, returns a bounded list of recent sessions. With `id`/slug, returns a summary row; set `detail: true` to fetch full metadata, log, and stored request body.
 
 ## Resources
 - `oracle-session://{id}/{metadata|log|request}` — read-only resources that surface stored session artifacts via MCP resource reads.
 
-## Background (how runs are scheduled)
-- The CLI chooses foreground vs. background automatically based on the model/engine (e.g., GPT‑5 Pro uses background with reconnection and cost tracking). The MCP server inherits the same defaults but does **not** expose a background flag; callers get the CLI’s safe defaults without extra switches.
+## Background / detach behavior
+- Same as the CLI: heavy models (e.g., GPT‑5 Pro) detach by default; reattach via `oracle session <id>` / `oracle status`. MCP does not expose extra background flags.
 
 ## Launching & usage
-- Build once: `pnpm build`.
-- Start the stdio server: `pnpm mcp` or `oracle-mcp` (from the repo root).
+- Installed from npm:
+  - One-off: `npx @steipete/oracle oracle-mcp`
+  - Global: `oracle-mcp`
+- From the repo (contributors):
+  - `pnpm build`
+  - `pnpm mcp` (or `oracle-mcp` in the repo root)
 - mcporter example (stdio):
   ```json
   {
     "name": "oracle",
     "type": "stdio",
     "command": "npx",
-    "args": ["-y", "@steipete/oracle", "oracle-mcp"]
+    "args": ["@steipete/oracle", "oracle-mcp"]
   }
   ```
 - Project-scoped Claude (.mcp.json) example:
   ```json
   {
     "mcpServers": {
-      "oracle": { "type": "stdio", "command": "npx", "args": ["-y", "@steipete/oracle", "oracle-mcp"] }
+      "oracle": { "type": "stdio", "command": "npx", "args": ["@steipete/oracle", "oracle-mcp"] }
     }
   }
   ```
 - Tools and resources operate on the same session store as `oracle status|session`.
-- Background runs (e.g., GPT-5 Pro API) still detach; if a call stalls or times out in your MCP client, reattach to the existing session via `oracle session <id>` instead of starting a new consult.
+- Defaults (model/engine/etc.) come from your Oracle CLI config; see `docs/configuration.md` or `~/.oracle/config.json`.
