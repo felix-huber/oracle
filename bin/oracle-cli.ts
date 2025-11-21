@@ -218,7 +218,7 @@ program
   .addOption(
     new Option(
       '--copy-markdown',
-      'Copy the assembled markdown bundle to the clipboard (also prints when combined with --render-markdown).',
+      'Copy the assembled markdown bundle to the clipboard; pair with --render to print it too.',
     ).default(false),
   )
   .addOption(new Option('--copy').hideHelp().default(false))
@@ -280,7 +280,11 @@ program
   .addOption(new Option('--exec-session <id>').hideHelp())
   .addOption(new Option('--session <id>').hideHelp())
   .addOption(new Option('--status', 'Show stored sessions (alias for `oracle status`).').default(false).hideHelp())
-  .option('--render-markdown', 'Emit the assembled markdown bundle for prompt + files and exit.', false)
+  .option(
+    '--render-markdown',
+    'Print the assembled markdown bundle for prompt + files and exit; pair with --copy to put it on the clipboard.',
+    false,
+  )
   .option('--render', 'Alias for --render-markdown.', false)
   .option('--render-plain', 'Render markdown without ANSI/highlighting (use plain text even in a TTY).', false)
   .option(
@@ -375,6 +379,9 @@ Examples:
   # Browser run (no API key) + globbed TypeScript sources, excluding tests
   oracle --engine browser --prompt "Review the TS data layer" \\
     --file "src/**/*.ts" --file "!src/**/*.test.ts"
+
+  # Build, print, and copy a markdown bundle (semi-manual)
+  oracle --render --copy -p "Summarize the risk register" --file docs/risk-register.md docs/risk-matrix.md
 `,
 );
 

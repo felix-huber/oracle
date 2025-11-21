@@ -35,32 +35,6 @@ async function loadRunOracleWithTty(isTty: boolean, mockRendered?: string) {
   };
 }
 
-async function loadRunOracleWithMockedRenderer(ansiRendered: string) {
-  const originalTty = (process.stdout as { isTTY?: boolean }).isTTY;
-  const originalForceColor = process.env.FORCE_COLOR;
-  (process.stdout as { isTTY?: boolean }).isTTY = true;
-  process.env.FORCE_COLOR = '1';
-  vi.resetModules();
-  vi.doMock('../../src/cli/markdownRenderer.js', () => ({
-    renderMarkdownAnsi: vi.fn(() => ansiRendered),
-  }));
-  const { runOracle } = await import('../../src/oracle/run.js');
-  const renderer = await import('../../src/cli/markdownRenderer.js');
-  return {
-    runOracle,
-    renderer,
-    restore: () => {
-      (process.stdout as { isTTY?: boolean }).isTTY = originalTty;
-      if (originalForceColor === undefined) {
-        delete process.env.FORCE_COLOR;
-      } else {
-        process.env.FORCE_COLOR = originalForceColor;
-      }
-      vi.resetModules();
-    },
-  };
-}
-
 function makeStreamingClient(delta: string): RunOracleDeps['clientFactory'] {
   const finalResponse: OracleResponse = {
     id: 'resp-1',
