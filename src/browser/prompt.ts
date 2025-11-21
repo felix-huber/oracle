@@ -2,7 +2,14 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { RunOracleOptions } from '../oracle.js';
-import { readFiles, createFileSections, MODEL_CONFIGS, TOKENIZER_OPTIONS, formatFileSection } from '../oracle.js';
+import {
+  readFiles,
+  createFileSections,
+  MODEL_CONFIGS,
+  TOKENIZER_OPTIONS,
+  formatFileSection,
+} from '../oracle.js';
+import { buildPromptMarkdown } from '../oracle/promptAssembly.js';
 import type { BrowserAttachment } from './types.js';
 
 export interface BrowserPromptArtifacts {
@@ -31,11 +38,7 @@ export async function assembleBrowserPrompt(
   const userPrompt = basePrompt;
   const systemPrompt = runOptions.system?.trim() || '';
   const sections = createFileSections(files, cwd);
-  const lines = ['[SYSTEM]', systemPrompt, '', '[USER]', userPrompt, ''];
-  sections.forEach((section) => {
-    lines.push(formatFileSection(section.displayPath, section.content));
-  });
-  const markdown = lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+  const markdown = buildPromptMarkdown(systemPrompt, userPrompt, sections);
   const inlineFiles = Boolean(runOptions.browserInlineFiles);
   const composerSections: string[] = [];
   if (systemPrompt) {

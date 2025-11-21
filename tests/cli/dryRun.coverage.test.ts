@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { runDryRunSummary } from '../../src/cli/dryRun.js';
+import { runDryRunSummary, runBrowserPreview } from '../../src/cli/dryRun.js';
 import type { RunOracleOptions } from '../../src/oracle/types.js';
 
 const baseRunOptions: RunOracleOptions = {
@@ -84,5 +84,76 @@ describe('runDryRunSummary', () => {
     const joined = log.mock.calls.flat().join('\n');
     expect(joined).toContain('Inline file content');
     expect(joined).toContain('cookie-sync');
+  });
+
+  test('browser dry run shows default cookie copy when none provided and no files attached', async () => {
+    const log = vi.fn();
+    const assembleBrowserPromptImpl = vi.fn().mockResolvedValue({
+      markdown: '[SYSTEM]\n[USER]',
+      composerText: 'Empty',
+      estimatedInputTokens: 42,
+      attachments: [],
+      inlineFileCount: 0,
+      tokenEstimateIncludesInlineFiles: false,
+      bundled: null,
+    });
+
+    await runDryRunSummary(
+      {
+        engine: 'browser',
+        runOptions: baseRunOptions,
+        cwd: '/repo',
+        version: '1.3.0',
+        log,
+        browserConfig: {},
+      },
+      { assembleBrowserPromptImpl },
+    );
+
+    const joined = log.mock.calls.flat().join('\n');
+    expect(joined).toContain('Cookies: copy from Chrome (all from Chrome profile)');
+    expect(joined).toContain('No files attached');
+  });
+
+  test('browser preview emits JSON payload and full composer text', async () => {
+    const log = vi.fn();
+    const assembleBrowserPromptImpl = vi.fn().mockResolvedValue({
+      markdown: '[SYSTEM]\n[USER]',
+      composerText: 'Preview text',
+      estimatedInputTokens: 900,
+      attachments: [{ path: '/tmp/file.txt', displayPath: 'file.txt', sizeBytes: 5 }],
+      inlineFileCount: 0,
+      tokenEstimateIncludesInlineFiles: false,
+      bundled: null,
+    });
+
+    await runBrowserPreview(
+      {
+        runOptions: baseRunOptions,
+        cwd: '/repo',
+        version: '1.3.0',
+        previewMode: 'json',
+        log,
+      },
+      { assembleBrowserPromptImpl },
+    );
+    let joined = log.mock.calls.flat().join('\n');
+    expect(joined).toContain('Preview JSON');
+    expect(joined).toContain('"composerText": "Preview text"');
+
+    log.mockClear();
+    await runBrowserPreview(
+      {
+        runOptions: baseRunOptions,
+        cwd: '/repo',
+        version: '1.3.0',
+        previewMode: 'full',
+        log,
+      },
+      { assembleBrowserPromptImpl },
+    );
+    joined = log.mock.calls.flat().join('\n');
+    expect(joined).toContain('Composer Text');
+    expect(joined).toContain('Preview text');
   });
 });

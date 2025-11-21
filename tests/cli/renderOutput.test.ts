@@ -5,7 +5,7 @@ vi.mock('../../src/cli/markdownRenderer.ts', () => ({
   renderMarkdownAnsi: vi.fn((text: string) => `RENDERED:${text}`),
 }));
 
-import { formatRenderedMarkdown } from '../../src/cli/renderOutput.js';
+import { formatRenderedMarkdown, shouldRenderRich } from '../../src/cli/renderOutput.js';
 import { renderMarkdownAnsi, ensureShikiReady } from '../../src/cli/markdownRenderer.js';
 
 describe('formatRenderedMarkdown', () => {
@@ -24,5 +24,18 @@ describe('formatRenderedMarkdown', () => {
     const out = await formatRenderedMarkdown('_raw_', { richTty: false });
     expect(out).toBe('_raw_');
     expect(renderMarkdownAnsi).not.toHaveBeenCalled();
+  });
+
+  test('falls back to raw markdown when renderer throws', async () => {
+    (renderMarkdownAnsi as unknown as jest.Mock).mockImplementationOnce(() => {
+      throw new Error('boom');
+    });
+    const out = await formatRenderedMarkdown('**boom**', { richTty: true });
+    expect(out).toBe('**boom**');
+  });
+
+  test('shouldRenderRich respects override and TTY', () => {
+    expect(shouldRenderRich({ richTty: false })).toBe(false);
+    expect(shouldRenderRich({ richTty: true })).toBe(true);
   });
 });

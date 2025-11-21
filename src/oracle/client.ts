@@ -13,12 +13,9 @@ import type {
 import { createGeminiClient } from './gemini.js';
 import { createClaudeClient } from './claude.js';
 
-const CUSTOM_CLIENT_FACTORY = loadCustomClientFactory();
-
 export function createDefaultClientFactory(): ClientFactory {
-  if (CUSTOM_CLIENT_FACTORY) {
-    return CUSTOM_CLIENT_FACTORY;
-  }
+  const customFactory = loadCustomClientFactory();
+  if (customFactory) return customFactory;
   return (
     key: string,
     options?: { baseUrl?: string; azure?: AzureOptions; model?: ModelName; resolvedModelId?: string },
@@ -66,6 +63,10 @@ function loadCustomClientFactory(): ClientFactory | null {
   if (!override) {
     return null;
   }
+
+  if (override === 'INLINE_TEST_FACTORY') {
+    return () => () => ({ responses: { create: () => 'ok' }, __custom: true } as unknown as ClientLike);
+  }
   try {
     const require = createRequire(import.meta.url);
     const resolved = path.isAbsolute(override) ? override : path.resolve(process.cwd(), override);
@@ -87,3 +88,6 @@ function loadCustomClientFactory(): ClientFactory | null {
   }
   return null;
 }
+
+// Exposed for tests
+export { loadCustomClientFactory as __loadCustomClientFactory };
