@@ -4,13 +4,20 @@ import { existsSync, promises as fsp } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import sqlite3 from 'sqlite3';
-import { createRequire } from 'node:module';
 import type { CookieParam } from './types.js';
+import { createRequire } from 'node:module';
 
-// win-dpapi is CommonJS; require it explicitly
-const { unprotectData } = createRequire(import.meta.url)('win-dpapi') as {
-  unprotectData: (data: Buffer, entropy?: any, scope?: 'CurrentUser' | 'LocalMachine') => Buffer;
+// win-dpapi is CommonJS; require it explicitly and support both named/default shapes.
+const dpapiModule = createRequire(import.meta.url)('win-dpapi') as {
+  Dpapi?: { unprotectData: (data: Buffer, entropy?: any, scope?: 'CurrentUser' | 'LocalMachine') => Buffer };
+  default?: { unprotectData: (data: Buffer, entropy?: any, scope?: 'CurrentUser' | 'LocalMachine') => Buffer };
 };
+const unprotectData =
+  dpapiModule?.Dpapi?.unprotectData ??
+  dpapiModule?.default?.unprotectData ??
+  ((_: Buffer) => {
+    throw new Error('win-dpapi unprotectData not available');
+  });
 
 type RawCookieRow = {
   name: string;
