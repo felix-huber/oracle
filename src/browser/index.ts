@@ -227,6 +227,48 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       ),
     ).catch(() => null);
     answerMarkdown = copiedMarkdown ?? answerText;
+    // Final sanity check: ensure we didn't accidentally capture the user prompt instead of the assistant turn.
+    const finalSnapshot = await readAssistantSnapshot(Runtime).catch(() => null);
+    const finalText = typeof finalSnapshot?.text === 'string' ? finalSnapshot.text.trim() : '';
+    if (
+      finalText &&
+      finalText !== answerMarkdown.trim() &&
+      finalText !== promptText.trim() &&
+      finalText.length >= answerMarkdown.trim().length
+    ) {
+      logger('Refreshed assistant response via final DOM snapshot');
+      answerText = finalText;
+      answerMarkdown = finalText;
+    }
+    if (answerMarkdown.trim() === promptText.trim()) {
+      const deadline = Date.now() + 8_000;
+      let bestText = '';
+      let bestHtml: string | undefined;
+      let stableCount = 0;
+      while (Date.now() < deadline) {
+        const snapshot = await readAssistantSnapshot(Runtime).catch(() => null);
+        const text = typeof snapshot?.text === 'string' ? snapshot.text.trim() : '';
+        const html = typeof snapshot?.html === 'string' ? snapshot.html : undefined;
+        if (text && text !== promptText.trim()) {
+          if (text.length > bestText.length) {
+            bestText = text;
+            bestHtml = html;
+            stableCount = 0;
+          } else if (text === bestText) {
+            stableCount += 1;
+          }
+          if (stableCount >= 2) {
+            break;
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+      if (bestText) {
+        logger('Recovered assistant response after detecting prompt echo');
+        answerText = bestText;
+        answerMarkdown = bestText;
+      }
+    }
     stopThinkingMonitor?.();
     runStatus = 'complete';
     const durationMs = Date.now() - startedAt;

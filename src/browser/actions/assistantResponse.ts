@@ -74,11 +74,13 @@ export async function waitForAssistantResponse(
   }
 
   const parsed = await parseAssistantEvaluationResult(Runtime, evaluation, timeoutMs, logger);
-  if (parsed) {
-    return parsed;
+  if (!parsed) {
+    await logDomFailure(Runtime, logger, 'assistant-response');
+    throw new Error('Unable to capture assistant response');
   }
-  await logDomFailure(Runtime, logger, 'assistant-response');
-  throw new Error('Unable to capture assistant response');
+
+  const refreshed = await refreshAssistantSnapshot(Runtime, parsed, logger);
+  return refreshed ?? parsed;
 }
 
 export async function readAssistantSnapshot(Runtime: ChromeClient['Runtime']): Promise<AssistantSnapshot | null> {
@@ -172,6 +174,28 @@ async function parseAssistantEvaluationResult(
     return null;
   }
   return { text: fallbackText, html: undefined, meta: {} };
+}
+
+async function refreshAssistantSnapshot(
+  Runtime: ChromeClient['Runtime'],
+  current: { text: string; html?: string; meta: { turnId?: string | null; messageId?: string | null } },
+  logger: BrowserLogger,
+): Promise<{ text: string; html?: string; meta: { turnId?: string | null; messageId?: string | null } } | null> {
+  const latestSnapshot = await waitForCondition(() => readAssistantSnapshot(Runtime), 5_000, 300);
+  const latest = normalizeAssistantSnapshot(latestSnapshot);
+  if (!latest) {
+    return null;
+  }
+  const currentLength = current.text.trim().length;
+  const latestLength = latest.text.length;
+  const hasBetterId = !current.meta?.messageId && Boolean(latest.meta.messageId);
+  const isLonger = latestLength > currentLength;
+  const hasDifferentText = latest.text.trim() !== current.text.trim();
+  if (isLonger || hasBetterId || hasDifferentText) {
+    logger('Refreshed assistant response via latest snapshot');
+    return latest;
+  }
+  return null;
 }
 
 async function terminateRuntimeExecution(Runtime: ChromeClient['Runtime']): Promise<void> {
