@@ -25,6 +25,9 @@ npx -y @steipete/oracle --engine browser -p "Review the TS data layer" --file "s
 # Multi-model in one call (API): GPT-5.1 Pro + Gemini 3 Pro + Claude Sonnet
 npx -y @steipete/oracle --models "gpt-5.1-pro,gemini-3-pro,claude-4.5-sonnet" -p "Cross-check this design" --file src/
 
+# Multi-model with shorthands (API): GPT-5.1 + Gemini 3 Pro + Claude Sonnet
+npx -y @steipete/oracle --models "gpt-5.1,gemini,sonnet" -p "Cross-check this design" --file src/ --wait
+
 # Sessions (list + reattach)
 npx -y @steipete/oracle status
 npx -y @steipete/oracle session <id>
@@ -73,7 +76,7 @@ Keys are loaded automatically from provider env vars (OpenAI, Gemini, Claude, Az
 | `-p, --prompt <text>` | Required prompt. |
 | `-f, --file <paths...>` | Attach files/dirs (globs + `!` excludes; multiple flags merge). |
 | `-e, --engine <api|browser>` | API by default when `OPENAI_API_KEY` is set; otherwise browser. |
-| `-m, --model <name>` | `gpt-5.1-pro` (default), `gpt-5.1`, `gpt-5.1-codex` (API-only), others per config. |
+| `-m, --model <name>` | `gpt-5.1-pro` (default), `gpt-5.1`, `gpt-5.1-codex` (API-only), others per config. Shorthands: `sonnet`/`claude` → `claude-4.5-sonnet`, `opus` → `claude-4.1-opus`, `gemini` → `gemini-3-pro`. |
 | `--render` / `--render-markdown` | Pretty-print the bundle to stdout. |
 | `--render-plain` | Force plain markdown (no ANSI) even in TTY. Wins if combined with `--render`. |
 | `--copy` / `--copy-markdown` | Copy the bundle to the clipboard; can combine with render flags. |
