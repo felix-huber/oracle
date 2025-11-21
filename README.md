@@ -62,7 +62,7 @@ oracle
 | `-p, --prompt <text>` | Required prompt. |
 | `-f, --file <paths...>` | Attach files/dirs (globs + `!` excludes). |
 | `-e, --engine <api\|browser>` | Choose API or browser (browser is experimental). |
-| `-m, --model <name>` | `gpt-5.1-pro` (default), `gpt-5.1`, `gpt-5.1-codex` (API-only), plus documented aliases. |
+| `-m, --model <name>` | `gpt-5.1-pro` (default), `gpt-5-pro`, `gpt-5.1`, `gpt-5.1-codex` (API-only), `gemini-3-pro`, `claude-4.5-sonnet`, `claude-4.1-opus`, plus documented aliases. |
 | `--models <list>` | Comma-separated API models for multi-model runs. |
 | `--base-url <url>` | Point API runs at LiteLLM/Azure/etc. |
 | `--chatgpt-url <url>` | Target a ChatGPT workspace/folder (browser). |

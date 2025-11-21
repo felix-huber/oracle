@@ -225,7 +225,7 @@ program
   .option('-s, --slug <words>', 'Custom session slug (3-5 words).')
   .option(
     '-m, --model <model>',
-    'Model to target (gpt-5.1-pro | gpt-5.1 | gpt-5.1-codex, or ChatGPT labels like "5.1 Instant" for browser runs).',
+    'Model to target (gpt-5.1-pro default; also gpt-5-pro, gpt-5.1, gpt-5.1-codex API-only, gemini-3-pro, claude-4.5-sonnet, claude-4.1-opus, or ChatGPT labels like "5.1 Instant" for browser runs).',
     normalizeModelOption,
   )
   .addOption(
