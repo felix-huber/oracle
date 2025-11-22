@@ -171,9 +171,11 @@ function buildChromeFlags(headless: boolean, debugBindAddress?: string | null): 
     '--disable-features=TranslateUI,AutomationControlled',
     '--mute-audio',
     '--window-size=1280,720',
-    '--password-store=basic',
-    '--use-mock-keychain',
   ];
+
+  if (process.platform !== 'win32' && !isWsl()) {
+    flags.push('--password-store=basic', '--use-mock-keychain');
+  }
 
   if (debugBindAddress) {
     flags.push(`--remote-debugging-address=${debugBindAddress}`);
