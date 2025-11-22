@@ -9,6 +9,7 @@ import {
   hideChromeWindow,
   connectToChrome,
   connectToRemoteChrome,
+  closeRemoteChromeTarget,
 } from './chromeLifecycle.js';
 import { syncCookies } from './cookies.js';
 import {
@@ -76,7 +77,9 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
   const manualProfileDir = config.manualLoginProfileDir
     ? path.resolve(config.manualLoginProfileDir)
     : path.join(os.homedir(), '.oracle', 'browser-profile');
-  const userDataDir = manualLogin ? manualProfileDir : await mkdtemp(path.join(os.tmpdir(), 'oracle-browser-'));
+  const userDataDir = manualLogin
+    ? manualProfileDir
+    : await mkdtemp(path.join(await resolveUserDataBaseDir(), 'oracle-browser-'));
   if (manualLogin) {
     await mkdir(userDataDir, { recursive: true });
     logger(`Manual login mode enabled; reusing persistent profile at ${userDataDir}`);
@@ -478,6 +481,7 @@ async function runRemoteBrowserMode(
   logger(`Connecting to remote Chrome at ${host}:${port}`);
 
   let client: ChromeClient | null = null;
+  let remoteTargetId: string | null = null;
   const startedAt = Date.now();
   let answerText = '';
   let answerMarkdown = '';
@@ -486,7 +490,9 @@ async function runRemoteBrowserMode(
   let stopThinkingMonitor: (() => void) | null = null;
 
   try {
-    client = await connectToRemoteChrome(host, port, logger);
+    const connection = await connectToRemoteChrome(host, port, logger, config.url);
+    client = connection.client;
+    remoteTargetId = connection.targetId ?? null;
     const markConnectionLost = () => {
       connectionClosedUnexpectedly = true;
     };
@@ -610,6 +616,7 @@ async function runRemoteBrowserMode(
     } catch {
       // ignore
     }
+    await closeRemoteChromeTarget(host, port, remoteTargetId ?? undefined, logger);
     // Don't kill remote Chrome - it's not ours to manage
     const totalSeconds = (Date.now() - startedAt) / 1000;
     logger(`Remote session complete • ${totalSeconds.toFixed(1)}s total`);
@@ -740,6 +747,26 @@ function isWsl(): boolean {
   if (process.platform !== 'linux') return false;
   if (process.env.WSL_DISTRO_NAME) return true;
   return os.release().toLowerCase().includes('microsoft');
+}
+
+async function resolveUserDataBaseDir(): Promise<string> {
+  // On WSL, Chrome launched via Windows can choke on UNC paths; prefer a Windows-backed temp folder.
+  if (isWsl()) {
+    const candidates = [
+      '/mnt/c/Users/Public/AppData/Local/Temp',
+      '/mnt/c/Temp',
+      '/mnt/c/Windows/Temp',
+    ];
+    for (const candidate of candidates) {
+      try {
+        await mkdir(candidate, { recursive: true });
+        return candidate;
+      } catch {
+        // try next
+      }
+    }
+  }
+  return os.tmpdir();
 }
 
 function buildThinkingStatusExpression(): string {

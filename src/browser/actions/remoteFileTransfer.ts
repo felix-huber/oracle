@@ -90,7 +90,40 @@ export async function uploadAttachmentViaDataTransfer(
       // Create DataTransfer and assign to input
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
-      fileInput.files = dataTransfer.files;
+      let assigned = false;
+
+      const proto = Object.getPrototypeOf(fileInput);
+      const descriptor = proto ? Object.getOwnPropertyDescriptor(proto, 'files') : null;
+      if (descriptor?.set) {
+        try {
+          descriptor.set.call(fileInput, dataTransfer.files);
+          assigned = true;
+        } catch {
+          assigned = false;
+        }
+      }
+      if (!assigned) {
+        try {
+          Object.defineProperty(fileInput, 'files', {
+            configurable: true,
+            get: () => dataTransfer.files,
+          });
+          assigned = true;
+        } catch {
+          assigned = false;
+        }
+      }
+      if (!assigned) {
+        try {
+          fileInput.files = dataTransfer.files;
+          assigned = true;
+        } catch {
+          assigned = false;
+        }
+      }
+      if (!assigned) {
+        return { success: false, error: 'Unable to assign FileList to input' };
+      }
 
       // Trigger both input and change events for better compatibility
       fileInput.dispatchEvent(new Event('input', { bubbles: true }));

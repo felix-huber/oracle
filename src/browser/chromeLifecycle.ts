@@ -1,24 +1,35 @@
 import { rm } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import os from 'node:os';
+import net from 'node:net';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import CDP from 'chrome-remote-interface';
-import { launch, type LaunchedChrome } from 'chrome-launcher';
+import { launch, Launcher, type LaunchedChrome } from 'chrome-launcher';
 import type { BrowserLogger, ResolvedBrowserConfig, ChromeClient } from './types.js';
 
 const execFileAsync = promisify(execFile);
 
 export async function launchChrome(config: ResolvedBrowserConfig, userDataDir: string, logger: BrowserLogger) {
   const connectHost = resolveRemoteDebugHost();
+  const debugBindAddress = connectHost && connectHost !== '127.0.0.1' ? '0.0.0.0' : connectHost;
   const debugPort = config.debugPort ?? parseDebugPortEnv();
-  const chromeFlags = buildChromeFlags(config.headless, connectHost);
-  const launcher = await launch({
-    chromePath: config.chromePath ?? undefined,
-    chromeFlags,
-    userDataDir,
-    port: debugPort ?? undefined,
-  });
+  const chromeFlags = buildChromeFlags(config.headless ?? false, debugBindAddress);
+  const usePatchedLauncher = Boolean(connectHost && connectHost !== '127.0.0.1');
+  const launcher = usePatchedLauncher
+    ? await launchWithCustomHost({
+        chromeFlags,
+        chromePath: config.chromePath ?? undefined,
+        userDataDir,
+        host: connectHost ?? '127.0.0.1',
+        requestedPort: debugPort ?? undefined,
+      })
+    : await launch({
+        chromePath: config.chromePath ?? undefined,
+        chromeFlags,
+        userDataDir,
+        port: debugPort ?? undefined,
+      });
   const pidLabel = typeof launcher.pid === 'number' ? ` (pid ${launcher.pid})` : '';
   const hostLabel = connectHost ? ` on ${connectHost}` : '';
   logger(`Launched Chrome${pidLabel} on port ${launcher.port}${hostLabel}`);
@@ -99,13 +110,50 @@ export async function connectToRemoteChrome(
   host: string,
   port: number,
   logger: BrowserLogger,
-): Promise<ChromeClient> {
-  const client = await CDP({ host, port });
+  targetUrl?: string,
+): Promise<RemoteChromeConnection> {
+  if (targetUrl) {
+    try {
+      const target = await CDP.New({ host, port, url: targetUrl });
+      const client = await CDP({ host, port, target: target.id });
+      logger(`Opened dedicated remote Chrome tab targeting ${targetUrl}`);
+      return { client, targetId: target.id };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger(`Failed to open dedicated remote Chrome tab (${message}); falling back to first target.`);
+    }
+  }
+  const fallbackClient = await CDP({ host, port });
   logger(`Connected to remote Chrome DevTools protocol at ${host}:${port}`);
-  return client;
+  return { client: fallbackClient };
 }
 
-function buildChromeFlags(_headless: boolean, debugHost?: string | null): string[] {
+export async function closeRemoteChromeTarget(
+  host: string,
+  port: number,
+  targetId: string | undefined,
+  logger: BrowserLogger,
+): Promise<void> {
+  if (!targetId) {
+    return;
+  }
+  try {
+    await CDP.Close({ host, port, id: targetId });
+    if (logger.verbose) {
+      logger(`Closed remote Chrome tab ${targetId}`);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger(`Failed to close remote Chrome tab ${targetId}: ${message}`);
+  }
+}
+
+export interface RemoteChromeConnection {
+  client: ChromeClient;
+  targetId?: string;
+}
+
+function buildChromeFlags(headless: boolean, debugBindAddress?: string | null): string[] {
   const flags = [
     '--disable-background-networking',
     '--disable-background-timer-throttling',
@@ -127,11 +175,13 @@ function buildChromeFlags(_headless: boolean, debugHost?: string | null): string
     '--use-mock-keychain',
   ];
 
-  if (debugHost && debugHost !== '127.0.0.1') {
-    flags.push('--remote-debugging-address=0.0.0.0');
+  if (debugBindAddress) {
+    flags.push(`--remote-debugging-address=${debugBindAddress}`);
   }
 
-  // Headless/new is blocked by Cloudflare; always run headful.
+  if (headless) {
+    flags.push('--headless=new');
+  }
 
   return flags;
 }
@@ -147,23 +197,94 @@ function parseDebugPortEnv(): number | null {
 }
 
 function resolveRemoteDebugHost(): string | null {
-  const override = process.env.ORACLE_BROWSER_REMOTE_DEBUG_HOST?.trim();
-  if (override) return override;
-  if (!isWsl()) return null;
+  const override = process.env.ORACLE_BROWSER_REMOTE_DEBUG_HOST?.trim() || process.env.WSL_HOST_IP?.trim();
+  if (override) {
+    return override;
+  }
+  if (!isWsl()) {
+    return null;
+  }
   try {
     const resolv = readFileSync('/etc/resolv.conf', 'utf8');
     for (const line of resolv.split('\n')) {
       const match = line.match(/^nameserver\s+([0-9.]+)/);
-      if (match?.[1]) return match[1];
+      if (match?.[1]) {
+        return match[1];
+      }
     }
   } catch {
-    // ignore
+    // ignore; fall back to localhost
   }
   return null;
 }
 
 function isWsl(): boolean {
-  if (process.platform !== 'linux') return false;
-  if (process.env.WSL_DISTRO_NAME) return true;
-  return os.release().toLowerCase().includes('microsoft');
+  if (process.platform !== 'linux') {
+    return false;
+  }
+  if (process.env.WSL_DISTRO_NAME) {
+    return true;
+  }
+  const release = os.release();
+  return release.toLowerCase().includes('microsoft');
+}
+
+async function launchWithCustomHost({
+  chromeFlags,
+  chromePath,
+  userDataDir,
+  host,
+  requestedPort,
+}: {
+  chromeFlags: string[];
+  chromePath?: string | null;
+  userDataDir: string;
+  host: string | null;
+  requestedPort?: number;
+}): Promise<LaunchedChrome & { host?: string }> {
+  const launcher = new Launcher({
+    chromePath: chromePath ?? undefined,
+    chromeFlags,
+    userDataDir,
+    port: requestedPort ?? undefined,
+  });
+
+  if (host) {
+    const patched = launcher as unknown as { isDebuggerReady?: () => Promise<void>; port?: number };
+    patched.isDebuggerReady = function patchedIsDebuggerReady(this: Launcher & { port?: number }): Promise<void> {
+      const debugPort = this.port ?? 0;
+      if (!debugPort) {
+        return Promise.reject(new Error('Missing Chrome debug port'));
+      }
+      return new Promise((resolve, reject) => {
+        const client = net.createConnection({ port: debugPort, host });
+        const cleanup = () => {
+          client.removeAllListeners();
+          client.end();
+          client.destroy();
+          client.unref();
+        };
+        client.once('error', (err) => {
+          cleanup();
+          reject(err);
+        });
+        client.once('connect', () => {
+          cleanup();
+          resolve();
+        });
+      });
+    };
+  }
+
+  await launcher.launch();
+
+  const kill = async () => launcher.kill();
+  return {
+    pid: launcher.pid ?? undefined,
+    port: launcher.port ?? 0,
+    process: launcher.chromeProcess as unknown as NonNullable<LaunchedChrome['process']>,
+    kill,
+    host: host ?? undefined,
+    remoteDebuggingPipes: launcher.remoteDebuggingPipes,
+  } as unknown as LaunchedChrome & { host?: string };
 }
