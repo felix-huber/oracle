@@ -107,7 +107,7 @@ export const MODEL_CONFIGS: Record<ModelName, ModelConfig> = {
 
 export const DEFAULT_SYSTEM_PROMPT = [
   'You are Oracle, a focused one-shot problem solver.',
-  'Emphasize direct answers, cite any files referenced, and clearly note when the search tool was used.',
+  'Emphasize direct answers and cite any files referenced.',
 ].join(' ');
 
 export const TOKENIZER_OPTIONS = { allowedSpecial: 'all' } as const;
