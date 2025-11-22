@@ -69,6 +69,23 @@ You can pass the same payload inline (`--browser-inline-cookies '<json or base64
 
 All options are persisted with the session so reruns (`oracle exec <id>`) reuse the same automation settings.
 
+### Manual login mode (persistent profile, no cookie copy)
+
+Use `--browser-manual-login` when cookie decrypt is blocked (e.g., Windows app-bound cookies) or you prefer to sign in explicitly:
+
+```bash
+oracle --engine browser \
+  --browser-manual-login \
+  --browser-keep-browser \
+  --model "ChatGPT 5.1" \
+  -p "Say hi"
+```
+
+- Oracle launches Chrome headful with a persistent automation profile at `~/.oracle/browser-profile` (override with `ORACLE_BROWSER_PROFILE_DIR` or config).
+- Log into chatgpt.com in that window the first time; Oracle polls until the session is active, then proceeds.
+- Reuse the same profile on subsequent runs (no re-login unless the session expires). Add `--browser-keep-browser` to leave Chrome running; otherwise Oracle closes it but preserves the profile on disk.
+- Cookie copy is skipped entirely in this mode; inline cookies still apply if provided.
+
 ## Remote Chrome Sessions (headless/server workflows)
 
 Oracle can reuse an already-running Chrome/Edge instance on another machine by tunneling over the Chrome DevTools Protocol. This is handy when:
