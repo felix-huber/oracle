@@ -27,7 +27,14 @@ interface BackgroundExecutionParams {
 
 export async function executeBackgroundResponse(params: BackgroundExecutionParams): Promise<OracleResponse> {
   const { client, requestBody, log, wait, heartbeatIntervalMs, now, maxWaitMs } = params;
-  const initialResponse = await client.responses.create(requestBody);
+  let initialResponse: OracleResponse;
+  try {
+    initialResponse = await client.responses.create(requestBody);
+  } catch (error) {
+    const transportError = toTransportError(error, requestBody.model);
+    log(chalk.yellow(describeTransportError(transportError, maxWaitMs)));
+    throw transportError;
+  }
   if (!initialResponse || !initialResponse.id) {
     throw new OracleResponseError('API did not return a response ID for the background run.', initialResponse);
   }

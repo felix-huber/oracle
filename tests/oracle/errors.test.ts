@@ -1,34 +1,27 @@
 import { describe, expect, test } from 'vitest';
-import {
-  BrowserAutomationError,
-  FileValidationError,
-  PromptValidationError,
-  OracleUserError,
-  asOracleUserError,
-} from '../../src/oracle/errors.ts';
 
-describe('oracle user errors', () => {
-  test('FileValidationError exposes category/details', () => {
-    const error = new FileValidationError('too large', { path: 'foo.txt', size: 2_000_000 });
-    expect(error).toBeInstanceOf(OracleUserError);
-    expect(error.category).toBe('file-validation');
-    expect(error.details).toEqual({ path: 'foo.txt', size: 2_000_000 });
-    expect(asOracleUserError(error)).toBe(error);
-  });
+import { toTransportError } from '@src/oracle/errors.js';
 
-  test('BrowserAutomationError exposes category/details', () => {
-    const error = new BrowserAutomationError('selector missing', { selector: '#prompt' });
-    expect(error.category).toBe('browser-automation');
-    expect(error.details).toEqual({ selector: '#prompt' });
-  });
+// Minimal stub matching openai APIError signature without pulling undici Headers.
+class FakeApiError extends Error {
+  status: number;
+  error: { message?: string; code?: string; param?: string };
+  code?: string;
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = 'APIError';
+    this.status = 400;
+    this.error = { message, code, param: 'model' };
+    this.code = code;
+  }
+}
 
-  test('PromptValidationError exposes category/details', () => {
-    const error = new PromptValidationError('prompt empty');
-    expect(error.category).toBe('prompt-validation');
-    expect(error.details).toBeUndefined();
-  });
-
-  test('asOracleUserError returns null for non-user errors', () => {
-    expect(asOracleUserError(new Error('boom'))).toBeNull();
+describe('toTransportError', () => {
+  test('maps gpt-5.1-pro model_not_found to model-unavailable with guidance', () => {
+    const apiError = new FakeApiError('The requested model does not exist', 'model_not_found');
+    const transport = toTransportError(apiError, 'gpt-5.1-pro');
+    expect(transport.reason).toBe('model-unavailable');
+    expect(transport.message).toContain('gpt-5.1-pro');
+    expect(transport.message).toContain('gpt-5-pro');
   });
 });

@@ -351,7 +351,14 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
       });
       elapsedMs = now() - runStart;
     } else {
-      const stream: ResponseStreamLike = await clientInstance.responses.stream(requestBody);
+      let stream: ResponseStreamLike;
+      try {
+        stream = await clientInstance.responses.stream(requestBody);
+      } catch (streamInitError) {
+        const transportError = toTransportError(streamInitError, requestBody.model);
+        log(chalk.yellow(describeTransportError(transportError, timeoutMs)));
+        throw transportError;
+      }
       let heartbeatActive = false;
       let stopHeartbeat: (() => void) | null = null;
       const stopHeartbeatNow = () => {
@@ -409,7 +416,7 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
       } catch (streamError) {
         // stream.abort() is not available on the interface
         stopHeartbeatNow();
-        const transportError = toTransportError(streamError);
+        const transportError = toTransportError(streamError, requestBody.model);
         log(chalk.yellow(describeTransportError(transportError, timeoutMs)));
         throw transportError;
       }

@@ -98,7 +98,7 @@ export function extractResponseMetadata(response?: OracleResponse | null): Oracl
   return metadata;
 }
 
-export function toTransportError(error: unknown): OracleTransportError {
+export function toTransportError(error: unknown, model?: string): OracleTransportError {
   if (error instanceof OracleTransportError) {
     return error;
   }
@@ -115,12 +115,30 @@ export function toTransportError(error: unknown): OracleTransportError {
       error,
     );
   }
-  if (error instanceof APIError) {
-    if (error.status === 404 || error.status === 405) {
+  const isApiError = error instanceof APIError || (error as { name?: string })?.name === 'APIError';
+  if (isApiError) {
+    const apiError = error as APIError & { code?: string; error?: { code?: string } };
+    const code = apiError.code ?? apiError.error?.code;
+    const messageText = apiError.message?.toLowerCase?.() ?? '';
+    // TODO: Remove once gpt-5.1-pro is available via the Responses API.
+    if (
+      model === 'gpt-5.1-pro' &&
+      (code === 'model_not_found' ||
+        messageText.includes('does not exist') ||
+        messageText.includes('unknown model') ||
+        messageText.includes('model_not_found'))
+    ) {
+      return new OracleTransportError(
+        'model-unavailable',
+        'gpt-5.1-pro is not yet available on this API base. Use gpt-5-pro for now until OpenAI enables it. // TODO: Remove once gpt-5.1-pro is available',
+        apiError,
+      );
+    }
+    if (apiError.status === 404 || apiError.status === 405) {
       return new OracleTransportError(
         'unsupported-endpoint',
         'HTTP 404/405 from the Responses API; this base URL or gateway likely does not expose /v1/responses. Set OPENAI_BASE_URL to api.openai.com/v1, update your Azure API version/deployment, or use the browser engine.',
-        error,
+        apiError,
       );
     }
   }
@@ -141,6 +159,8 @@ export function describeTransportError(error: OracleTransportError, deadlineMs?:
       return 'Connection to OpenAI ended unexpectedly before the response completed.';
     case 'client-abort':
       return 'Request was aborted before OpenAI completed the response.';
+    case 'model-unavailable':
+      return error.message;
     case 'unsupported-endpoint':
       return 'The Responses API returned 404/405 — your base URL/gateway probably lacks /v1/responses (check OPENAI_BASE_URL or switch to api.openai.com / browser engine).';
     default:

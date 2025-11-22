@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { runOracle, extractTextOutput } from '../../src/oracle.ts';
+import { runOracle, extractTextOutput, OracleTransportError } from '../../src/oracle.ts';
 
 const ENABLE_LIVE = process.env.ORACLE_LIVE_TEST === '1';
 const LIVE_API_KEY = process.env.OPENAI_API_KEY;
@@ -83,6 +83,35 @@ if (!ENABLE_LIVE || !LIVE_API_KEY) {
         expect(result.response.status ?? 'completed').toBe('completed');
       },
       10 * 60 * 1000,
+    );
+
+    test(
+      'gpt-5.1-pro currently reports model-unavailable (temporary guard)',
+      async () => {
+        try {
+          await runOracle(
+            {
+              prompt: 'This should fail because gpt-5.1-pro is not live yet.',
+              model: 'gpt-5.1-pro',
+              silent: true,
+              background: false,
+              heartbeatIntervalMs: 0,
+              maxOutput: 16,
+            },
+            sharedDeps,
+          );
+          expect.fail(
+            'gpt-5.1-pro is now available; remove the temporary model-unavailable guard and this test.',
+          );
+        } catch (error) {
+          expect(error).toBeInstanceOf(OracleTransportError);
+          const transport = error as OracleTransportError;
+          expect(transport.reason).toBe('model-unavailable');
+          expect(transport.message).toContain('gpt-5.1-pro');
+          expect(transport.message).toContain('gpt-5-pro');
+        }
+      },
+      2 * 60 * 1000,
     );
   });
 }
