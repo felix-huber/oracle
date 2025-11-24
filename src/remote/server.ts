@@ -2,6 +2,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { randomBytes, randomUUID } from 'node:crypto';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import type { BrowserAttachment, BrowserLogger, CookieParam } from '../browser/types.js';
@@ -193,10 +194,15 @@ export async function createRemoteServer(
 
 export async function serveRemote(options: RemoteServerOptions = {}): Promise<void> {
   // Warm-up: ensure this host has a ChatGPT login before accepting runs.
-  const cookies = await loadLocalChatgptCookies(console.log, CHATGPT_URL);
+  const { cookies, opened } = await loadLocalChatgptCookies(console.log, CHATGPT_URL);
   if (!cookies || cookies.length === 0) {
     console.log('No ChatGPT cookies detected on this host.');
-    console.log('Opened chatgpt.com for login. Sign in, then restart `oracle serve` to continue.');
+    if (opened) {
+      console.log('Opened chatgpt.com for login. Sign in, then restart `oracle serve` to continue.');
+    } else {
+      console.log('Please open https://chatgpt.com/ in this host\'s browser and sign in; then rerun.');
+      console.log('Tip: install xdg-utils (xdg-open) to enable automatic browser opening on Linux/WSL.');
+    }
     return;
   }
   console.log(`Detected ${cookies.length} ChatGPT cookies on this host; runs will reuse this session.`);
@@ -285,7 +291,7 @@ function formatReachableAddresses(bindAddress: string, port: number): string[] {
   return Array.from(new Set([...ipv4, ...ipv6]));
 }
 
-async function loadLocalChatgptCookies(logger: (message: string) => void, targetUrl: string): Promise<CookieParam[] | null> {
+async function loadLocalChatgptCookies(logger: (message: string) => void, targetUrl: string): Promise<{ cookies: CookieParam[] | null; opened: boolean }> {
   try {
     logger('Loading ChatGPT cookies from this host\'s Chrome profile...');
     const cookies = await Promise.resolve(
@@ -299,32 +305,96 @@ async function loadLocalChatgptCookies(logger: (message: string) => void, target
     });
     if (!cookies || cookies.length === 0) {
       logger('No local ChatGPT cookies found on this host. Please log in once; opening ChatGPT...');
-      triggerLocalLoginPrompt(logger, targetUrl);
-      return null;
+      const opened = triggerLocalLoginPrompt(logger, targetUrl);
+      return { cookies: null, opened };
     }
     logger(`Loaded ${cookies.length} local ChatGPT cookies on this host.`);
-    return cookies;
+    return { cookies, opened: false };
   } catch (error) {
-    logger(`Unable to load local ChatGPT cookies on this host: ${error instanceof Error ? error.message : String(error)}`);
-    triggerLocalLoginPrompt(logger, targetUrl);
-    return null;
+    const message = error instanceof Error ? error.message : String(error);
+    const missingDbMatch = message.match(/Unable to locate Chrome cookie DB at (.+)/);
+    if (missingDbMatch) {
+      const lookedPath = missingDbMatch[1];
+      logger(`Chrome cookies not found at ${lookedPath}. Set --browser-cookie-path to your Chrome profile or log in manually.`);
+    } else {
+      logger(`Unable to load local ChatGPT cookies on this host: ${message}`);
+    }
+    if (process.platform === 'linux' && isWsl()) {
+      logger(
+        'WSL hint: Chrome lives under /mnt/c/Users/<you>/AppData/Local/Google/Chrome/User Data/Default; pass --browser-cookie-path to that directory if auto-detect fails.',
+      );
+    }
+    const opened = triggerLocalLoginPrompt(logger, targetUrl);
+    return { cookies: null, opened };
   }
 }
 
-function triggerLocalLoginPrompt(logger: (message: string) => void, url: string): void {
-  const opener =
-    process.platform === 'darwin'
-      ? 'open'
-      : process.platform === 'win32'
-        ? 'start'
-        : 'xdg-open';
+function triggerLocalLoginPrompt(logger: (message: string) => void, url: string): boolean {
+  const verbose = process.argv.includes('--verbose') || process.env.ORACLE_SERVE_VERBOSE === '1';
+  const openers: Array<{ cmd: string; args?: string[] }> = [];
+
+  if (process.platform === 'darwin') {
+    openers.push({ cmd: 'open' });
+  } else if (process.platform === 'win32') {
+    openers.push({ cmd: 'start' });
+  } else {
+    if (isWsl()) {
+      // Prefer wslview when available, then fall back to Windows start.exe to open in the host browser.
+      openers.push({ cmd: 'wslview' });
+      openers.push({ cmd: 'cmd.exe', args: ['/c', 'start', '', url] });
+    }
+    openers.push({ cmd: 'xdg-open' });
+  }
+
+  // Add a cross-platform, low-friction fallback when nothing above is available.
+  openers.push({ cmd: 'sensible-browser' });
+
   try {
     // Fire and forget; user completes login in the opened browser window.
-    void import('node:child_process').then(({ spawn }) => {
-      spawn(opener, [url], { stdio: 'ignore', detached: true }).unref();
-    });
-    logger(`Opened ${url} locally. Please sign in; subsequent runs will reuse the session.`);
+    if (verbose) {
+      logger(`[serve] Login opener candidates: ${openers.map((o) => o.cmd).join(', ')}`);
+    }
+    const candidate = openers.find((opener) => canSpawn(opener.cmd));
+    if (candidate) {
+      const child = spawn(candidate.cmd, candidate.args ?? [url], { stdio: 'ignore', detached: true });
+      child.unref();
+      child.once('error', (error) => {
+        if (verbose) {
+          logger(`[serve] Opener ${candidate.cmd} failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        logger(`Please open ${url} in this host's browser and sign in; then rerun.`);
+      });
+      logger(`Opened ${url} locally via ${candidate.cmd}. Please sign in; subsequent runs will reuse the session.`);
+      if (verbose && candidate.args) {
+        logger(`[serve] Opener args: ${candidate.args.join(' ')}`);
+      }
+      return true;
+    }
+    if (verbose) {
+      logger('[serve] No available opener found; prompting manual login.');
+    }
+    return false;
   } catch {
-    logger(`Please open ${url} in this host's browser and sign in; then rerun.`);
+    return false;
+  }
+}
+
+function isWsl(): boolean {
+  if (process.platform !== 'linux') return false;
+  return Boolean(process.env.WSL_DISTRO_NAME || os.release().toLowerCase().includes('microsoft'));
+}
+
+function canSpawn(cmd: string): boolean {
+  if (!cmd) return false;
+  try {
+    if (process.platform === 'win32') {
+      // `where` returns non-zero when the command is not found.
+      const result = spawnSync('where', [cmd], { stdio: 'ignore' });
+      return result.status === 0;
+    }
+    const result = spawnSync('command', ['-v', cmd], { stdio: 'ignore' });
+    return result.status === 0;
+  } catch {
+    return false;
   }
 }

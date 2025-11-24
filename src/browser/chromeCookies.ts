@@ -271,6 +271,26 @@ async function defaultProfileRoot(): Promise<string> {
       path.join(os.homedir(), 'Library', 'Application Support', 'Chromium'),
     );
   } else if (process.platform === 'linux') {
+    if (isWsl()) {
+      const windowsHomes = [process.env.USERPROFILE, process.env.WIN_HOME, process.env.HOME?.replace('/home', '/mnt/c/Users')]
+        .filter((p): p is string => Boolean(p))
+        .map((p) => p.replace(/\\/g, '/'));
+      const wslCandidates: string[] = [];
+      for (const home of windowsHomes) {
+        const normalized = home.startsWith('/mnt/') ? home : `/mnt/c/Users/${path.basename(home)}`;
+        wslCandidates.push(
+          path.join(normalized, 'AppData', 'Local', 'Google', 'Chrome', 'User Data'),
+          path.join(normalized, 'AppData', 'Local', 'Microsoft', 'Edge', 'User Data'),
+        );
+      }
+      // Ensure we don't pick a non-user Default profile ahead of real ones.
+      for (const candidate of wslCandidates) {
+        const hasProfile = existsSync(path.join(candidate, 'Default'));
+        if (hasProfile) {
+          candidates.push(candidate);
+        }
+      }
+    }
     candidates.push(
       path.join(os.homedir(), '.config', 'google-chrome'),
       path.join(os.homedir(), '.config', 'microsoft-edge'),
@@ -315,6 +335,11 @@ function readDuration(envKey: string, fallback: number): number {
   if (!raw) return fallback;
   const parsed = Number.parseInt(raw, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function isWsl(): boolean {
+  if (process.platform !== 'linux') return false;
+  return Boolean(process.env.WSL_DISTRO_NAME || os.release().toLowerCase().includes('microsoft'));
 }
 
 function loadKeychainLabels(): KeychainLabel[] {
