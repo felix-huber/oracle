@@ -44,7 +44,7 @@
   - [ ] `git tag vX.Y.Z && git push --tags`
    - [ ] Create GitHub release for tag `vX.Y.Z`:
       - Title = `X.Y.Z` (just the version, no “Oracle”, no date).
-      - Body = product-facing bullet list for that version (copy from changelog bullets only; omit the heading and the word “changelog”).
+   - Body = product-facing bullet list for that version (copy from changelog bullets only; omit the heading and the word “changelog”). Always paste the full Added/Changed/Fixed bullets (no trimming) to keep npm/GitHub notes in sync.
       - Upload assets: `oracle-<version>.tgz`, `oracle-<version>.tgz.sha1`, `oracle-<version>.tgz.sha256`.
       - Confirm the auto `Source code (zip|tar.gz)` assets are present.
    - [ ] From a clean temp directory (no package.json/node_modules), run `npx @steipete/oracle@X.Y.Z "Smoke from empty dir" --dry-run` to confirm the package installs/executes via npx.
