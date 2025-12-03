@@ -1,6 +1,7 @@
 import { mkdtemp, rm, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import net from 'node:net';
 import { resolveBrowserConfig } from './config.js';
 import type { BrowserRunOptions, BrowserRunResult, BrowserLogger, ChromeClient, BrowserAttachment } from './types.js';
 import {
@@ -44,7 +45,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
 
   const attachments: BrowserAttachment[] = options.attachments ?? [];
 
-  const config = resolveBrowserConfig(options.config);
+  let config = resolveBrowserConfig(options.config);
   const logger: BrowserLogger = options.log ?? ((_message: string) => {});
   if (logger.verbose === undefined) {
     logger.verbose = Boolean(config.debug);
@@ -82,6 +83,15 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
         promptLength: promptText.length,
       })}`,
     );
+  }
+
+  if (!config.remoteChrome && !config.manualLogin) {
+    const preferredPort = config.debugPort ?? DEFAULT_DEBUG_PORT;
+    const availablePort = await pickAvailableDebugPort(preferredPort, logger);
+    if (availablePort !== preferredPort) {
+      logger(`DevTools port ${preferredPort} busy; using ${availablePort} to avoid attaching to stray Chrome.`);
+    }
+    config = { ...config, debugPort: availablePort };
   }
 
   // Remote Chrome mode - connect to existing browser
@@ -445,6 +455,51 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
   }
 }
 
+const DEFAULT_DEBUG_PORT = 9222;
+
+async function pickAvailableDebugPort(preferredPort: number, logger: BrowserLogger): Promise<number> {
+  const start = Number.isFinite(preferredPort) && preferredPort > 0 ? preferredPort : DEFAULT_DEBUG_PORT;
+  for (let offset = 0; offset < 10; offset++) {
+    const candidate = start + offset;
+    if (await isPortAvailable(candidate)) {
+      return candidate;
+    }
+  }
+  const fallback = await findEphemeralPort();
+  logger(`DevTools ports ${start}-${start + 9} are occupied; falling back to ${fallback}.`);
+  return fallback;
+}
+
+async function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+async function findEphemeralPort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once('error', (error) => {
+      server.close();
+      reject(error);
+    });
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (address && typeof address === 'object') {
+        const port = address.port;
+        server.close(() => resolve(port));
+      } else {
+        server.close(() => reject(new Error('Failed to acquire ephemeral port')));
+      }
+    });
+  });
+}
+
 async function waitForLogin({
   runtime,
   logger,
@@ -486,6 +541,31 @@ async function waitForLogin({
     }
   }
   throw new Error('Manual login mode timed out waiting for ChatGPT session; please sign in and retry.');
+}
+
+async function assertNavigatedToHttp(
+  runtime: ChromeClient['Runtime'],
+  logger: BrowserLogger,
+  timeoutMs = 10_000,
+): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let lastUrl = '';
+  while (Date.now() < deadline) {
+    const { result } = await runtime.evaluate({
+      expression: 'typeof location === "object" && location.href ? location.href : ""',
+      returnByValue: true,
+    });
+    const url = typeof result?.value === 'string' ? result.value : '';
+    lastUrl = url;
+    if (/^https?:\/\//i.test(url)) {
+      return url;
+    }
+    await delay(250);
+  }
+  throw new BrowserAutomationError('ChatGPT session not detected; page never left new tab.', {
+    stage: 'execute-browser',
+    details: { url: lastUrl || '(empty)' },
+  });
 }
 
 async function maybeReuseRunningChrome(userDataDir: string, logger: BrowserLogger): Promise<LaunchedChrome | null> {
