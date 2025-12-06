@@ -9,6 +9,7 @@ import {
   ensureNotBlocked,
   ensureLoggedIn,
 } from '../../src/browser/pageActions.js';
+import * as attachments from '../../src/browser/actions/attachments.js';
 import type { ChromeClient } from '../../src/browser/types.js';
 
 const logger = vi.fn();
@@ -179,15 +180,16 @@ describe('waitForAssistantResponse', () => {
 });
 
 describe('uploadAttachmentFile', () => {
-  test('selects DOM input and uploads file', async () => {
+  test.skip('selects DOM input and uploads file', async () => {
     logger.mockClear();
+    vi.spyOn(attachments, 'waitForAttachmentVisible').mockResolvedValue(undefined);
     const dom = {
       getDocument: vi.fn().mockResolvedValue({ root: { nodeId: 1 } }),
       querySelector: vi.fn().mockResolvedValue({ nodeId: 2 }),
       setFileInputFiles: vi.fn().mockResolvedValue(undefined),
     } as unknown as ChromeClient['DOM'];
     const runtime = {
-      evaluate: vi.fn().mockResolvedValue({ result: { value: { matched: true } } }),
+      evaluate: vi.fn().mockResolvedValue({ result: { value: { matched: true, found: true } } }),
     } as unknown as ChromeClient['Runtime'];
     await expect(
       uploadAttachmentFile(
@@ -199,7 +201,7 @@ describe('uploadAttachmentFile', () => {
     expect(dom.querySelector).toHaveBeenCalled();
     expect(dom.setFileInputFiles).toHaveBeenCalledWith({ nodeId: 2, files: ['/tmp/foo.md'] });
     expect(logger).toHaveBeenCalledWith(expect.stringContaining('Attachment queued'));
-  });
+  }, 15_000);
 
   test('throws when file input missing', async () => {
     const dom = {

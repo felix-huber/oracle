@@ -149,6 +149,7 @@ async function attemptSendButton(Runtime: ChromeClient['Runtime']): Promise<bool
       style.pointerEvents === 'none' ||
       style.display === 'none';
     if (disabled) return 'disabled';
+    // Use unified pointer/mouse sequence to satisfy React handlers.
     dispatchClickSequence(button);
     return 'clicked';
   })()`;

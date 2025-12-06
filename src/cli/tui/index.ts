@@ -23,10 +23,8 @@ const RECENT_WINDOW_HOURS = 24;
 const PAGE_SIZE = 10;
 
 type SessionChoice = { name: string; value: string };
-type Choice =
-  | SessionChoice
-  | inquirer.Separator
-  | (SessionChoice & { disabled?: boolean });
+type SeparatorChoice = InstanceType<typeof inquirer.Separator>;
+type Choice = SessionChoice | SeparatorChoice | (SessionChoice & { disabled?: boolean });
 
 export interface LaunchTuiOptions {
   version: string;
@@ -84,7 +82,7 @@ export async function launchTui({ version, printIntro = true }: LaunchTuiOptions
       const prompt = inquirer.prompt<{ selection: string }>([
         {
           name: 'selection',
-          type: 'list',
+          type: 'select',
           message: 'Select a session or action',
           choices,
           pageSize: 16,
@@ -102,6 +100,10 @@ export async function launchTui({ version, printIntro = true }: LaunchTuiOptions
           resolve('__reset__');
         });
     });
+
+    if (process.env.ORACLE_DEBUG_TUI === '1') {
+      console.error(`[tui] selection=${JSON.stringify(selection)}`);
+    }
 
     if (selection === '__exit__') {
       console.log(chalk.green('🧿 Closing the book. See you next prompt.'));
@@ -193,7 +195,7 @@ async function showSessionDetail(sessionId: string): Promise<void> {
     const { next } = await inquirer.prompt<{ next: string }>([
       {
         name: 'next',
-        type: 'list',
+        type: 'select',
         message: 'Actions',
         choices: actions,
       },
@@ -294,9 +296,7 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
   const initialMode: SessionMode = hasApiKey ? 'api' : 'browser';
   const preferredMode: SessionMode = (userConfig.engine as SessionMode | undefined) ?? initialMode;
 
-  const answers = await inquirer.prompt<
-    WizardAnswers & { mode: SessionMode; promptInput: string }
-  >([
+  const wizardQuestions = [
     {
       name: 'promptInput',
       type: 'input',
@@ -306,7 +306,7 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
       ? [
           {
             name: 'mode',
-            type: 'list',
+            type: 'select',
             message: 'Engine',
             default: preferredMode,
             choices: [
@@ -318,7 +318,7 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
       : [
           {
             name: 'mode',
-            type: 'list',
+            type: 'select',
             message: 'Engine',
             default: preferredMode,
             choices: [{ name: 'Browser', value: 'browser' }],
@@ -331,7 +331,7 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
     },
     {
       name: 'model',
-      type: 'list',
+      type: 'select',
       message: 'Model',
       default: DEFAULT_MODEL,
       choices: modelChoices,
@@ -341,7 +341,7 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
       type: 'checkbox',
       message: 'Additional API models to fan out to (optional)',
       choices: modelChoices,
-      when: (ans) => ans.mode === 'api',
+      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'api',
       filter: (values: string[]) =>
         Array.isArray(values)
           ? values
@@ -364,29 +364,33 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
       type: 'input',
       message: 'Chrome profile to reuse cookies from:',
       default: 'Default',
-      when: (ans) => ans.mode === 'browser',
+      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
     },
     {
       name: 'chromeCookiePath',
       type: 'input',
       message: 'Cookie DB path (Chromium/Edge, optional):',
-      when: (ans) => ans.mode === 'browser',
+      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
     },
     {
       name: 'hideWindow',
       type: 'confirm',
       message: 'Hide Chrome window (macOS headful only)?',
       default: false,
-      when: (ans) => ans.mode === 'browser',
+      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
     },
     {
       name: 'keepBrowser',
       type: 'confirm',
       message: 'Keep browser open after completion?',
       default: false,
-      when: (ans) => ans.mode === 'browser',
+      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
     },
-  ]);
+  ] as const;
+
+  const answers = await inquirer.prompt<WizardAnswers & { mode: SessionMode; promptInput: string }>(
+    wizardQuestions as unknown as Parameters<(typeof inquirer)['prompt']>[0],
+  );
 
   const mode = (answers.mode ?? initialMode) as SessionMode;
   const prompt = await resolvePromptInput(answers.promptInput);

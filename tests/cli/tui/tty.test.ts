@@ -13,8 +13,8 @@ ptyDescribe('TUI (interactive, PTY)', () => {
     async () => {
       const { output, exitCode, homeDir } = await runOracleTuiWithPty({
         steps: [
-          // Move to the Exit row (ask oracle -> ask oracle -> newer/reset -> exit)
-          { match: 'Select a session or action', write: '\u001b[B\u001b[B\u001b[B\r' },
+          // Move to the Exit row (ask oracle -> ask oracle -> newer/reset -> exit). Extra downs are harmless.
+          { match: 'Select a session or action', write: '\u001b[B\u001b[B\u001b[B\u001b[B\u001b[B\u001b[B\r' },
         ],
       });
       await fs.rm(homeDir, { recursive: true, force: true }).catch(() => {});
@@ -31,7 +31,7 @@ ptyDescribe('TUI (interactive, PTY)', () => {
     async () => {
       const { output, homeDir } = await runOracleTuiWithPty({
         steps: [
-          { match: 'Select a session or action', write: '\u001b[B\u001b[B\u001b[B\r' },
+          { match: 'Select a session or action', write: '\u001b[B\u001b[B\u001b[B\u001b[B\u001b[B\u001b[B\r' },
         ],
       });
       await fs.rm(homeDir, { recursive: true, force: true }).catch(() => {});

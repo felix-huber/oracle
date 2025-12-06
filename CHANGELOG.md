@@ -1,11 +1,10 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-## Unreleased
+## 0.5.2 — 2025-12-06
 
 ### Changed
 - Updated Inquirer to 13.x and aligned TUI prompts with `select` to stay compatible with the latest API.
+- Browser click automation now uses a shared pointer/mouse event sequence for send/model/copy/stop buttons, improving reliability with React/ProseMirror UIs.
 
 ### Fixed
 - Browser config defaults from `~/.oracle/config.json` now apply when CLI flags are untouched (chromePath/profile/cookiePath), fixing “No Chrome installations found” when a custom browser path is configured.

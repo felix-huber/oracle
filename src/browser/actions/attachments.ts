@@ -102,7 +102,7 @@ export async function waitForAttachmentVisible(
   timeoutMs: number,
   logger?: BrowserLogger,
 ): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
+  const deadline = Date.now() + Math.min(timeoutMs, 2_000);
   const expression = `(() => {
     const expected = ${JSON.stringify(expectedName)};
     const turns = Array.from(document.querySelectorAll('article[data-testid^="conversation-turn"]'));
