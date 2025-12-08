@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.4 — Unreleased
+## 0.5.4 — 2025-12-08
 
 ### Changed
 - Docs: README now explicitly warns against `pnpx @steipete/oracle` (pnpx cache breaks sqlite bindings); use `npx -y @steipete/oracle` instead. Thanks Xuanwo for flagging this.
