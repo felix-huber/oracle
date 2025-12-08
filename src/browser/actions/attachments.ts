@@ -102,22 +102,28 @@ export async function waitForAttachmentVisible(
   timeoutMs: number,
   logger?: BrowserLogger,
 ): Promise<void> {
-  const deadline = Date.now() + Math.min(timeoutMs, 2_000);
+  // Attachments can take a few seconds to render in the composer (headless/remote Chrome is slower),
+  // so respect the caller-provided timeout instead of capping at 2s.
+  const deadline = Date.now() + timeoutMs;
   const expression = `(() => {
     const expected = ${JSON.stringify(expectedName)};
     const normalized = expected.toLowerCase();
-    const matchText = (node) => (node?.textContent || '').toLowerCase().includes(normalized);
+    const matchNode = (node) => {
+      if (!node) return false;
+      const text = (node.textContent || '').toLowerCase();
+      const aria = node.getAttribute?.('aria-label')?.toLowerCase?.() ?? '';
+      const title = node.getAttribute?.('title')?.toLowerCase?.() ?? '';
+      const testId = node.getAttribute?.('data-testid')?.toLowerCase?.() ?? '';
+      const alt = node.getAttribute?.('alt')?.toLowerCase?.() ?? '';
+      return [text, aria, title, testId, alt].some((value) => value.includes(normalized));
+    };
 
     const turns = Array.from(document.querySelectorAll('article[data-testid^="conversation-turn"]'));
     const userTurns = turns.filter((node) => node.querySelector('[data-message-author-role="user"]'));
     const lastUser = userTurns[userTurns.length - 1];
-    let chips = false;
     if (lastUser) {
-      chips = Array.from(lastUser.querySelectorAll('a, div, span')).some(matchText);
-    }
-
-    if (chips) {
-      return { found: true, userTurns: userTurns.length, source: 'turn' };
+      const turnMatch = Array.from(lastUser.querySelectorAll('*')).some(matchNode);
+      if (turnMatch) return { found: true, userTurns: userTurns.length, source: 'turn' };
     }
 
     const composerSelectors = [
@@ -127,12 +133,29 @@ export async function waitForAttachmentVisible(
       '[data-testid*="upload"]',
       '[data-testid*="chip"]',
       'form',
+      'button',
+      'label',
+      'input[type="file"]',
     ];
     const composerMatch = composerSelectors.some((selector) =>
-      Array.from(document.querySelectorAll(selector)).some(matchText),
+      Array.from(document.querySelectorAll(selector)).some(matchNode),
     );
     if (composerMatch) {
       return { found: true, userTurns: userTurns.length, source: 'composer' };
+    }
+
+    const attrMatch = Array.from(document.querySelectorAll('[aria-label], [title], [data-testid]')).some(matchNode);
+    if (attrMatch) {
+      return { found: true, userTurns: userTurns.length, source: 'attrs' };
+    }
+
+    const fileInputs = Array.from(document.querySelectorAll('input[type="file"]')).some((node) => {
+      const el = node instanceof HTMLInputElement ? node : null;
+      if (!el?.files?.length) return false;
+      return Array.from(el.files).some((file) => file?.name?.toLowerCase?.().includes(normalized));
+    });
+    if (fileInputs) {
+      return { found: true, userTurns: userTurns.length, source: 'input' };
     }
 
     const bodyMatch = (document.body?.innerText || '').toLowerCase().includes(normalized);
