@@ -136,7 +136,10 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
   const chromeHost = (chrome as unknown as { host?: string }).host ?? '127.0.0.1';
   let removeTerminationHooks: (() => void) | null = null;
   try {
-    removeTerminationHooks = registerTerminationHooks(chrome, userDataDir, effectiveKeepBrowser, logger);
+    removeTerminationHooks = registerTerminationHooks(chrome, userDataDir, effectiveKeepBrowser, logger, {
+      isInFlight: () => runStatus !== 'complete',
+      emitRuntimeHint,
+    });
   } catch {
     // ignore failure; cleanup still happens below
   }
