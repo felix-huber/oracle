@@ -8,7 +8,6 @@ import {
   launchChrome,
   registerTerminationHooks,
   hideChromeWindow,
-  connectToChrome,
   connectToRemoteChrome,
   closeRemoteChromeTarget,
   connectWithNewTab,
@@ -174,7 +173,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
     // ignore failure; cleanup still happens below
   }
 
-  let client: Awaited<ReturnType<typeof connectToChrome>> | null = null;
+  let client: ChromeClient | null = null;
   let isolatedTargetId: string | null = null;
   const startedAt = Date.now();
   let answerText = '';

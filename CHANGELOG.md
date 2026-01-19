@@ -5,6 +5,7 @@
 ### Added
 - Bridge: add the bridge workflow + MCP browser controls for remote ChatGPT sessions. Original PR #42 by Kyle McCleary (@kmccleary3301) — thank you!
 - CLI: add `--background`/`--no-background`, `--http-timeout`, `--zombie-timeout`, and `--zombie-last-activity` to support long-running API sessions.
+- Browser: isolate per-run tabs for parallel MCP sessions, with safe fallback + keep-browser preserving the run tab. Original PR #70 by Gary Basin (@gbasin) — thank you!
 
 ### Fixed
 - CLI: restore legacy `--[no-]notify`, `--[no-]notify-sound`, and `--[no-]background` flags as hidden aliases (Commander no longer accepts `[no-]` in `new Option()`).
