@@ -6,7 +6,9 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@steipete/oracle"><img src="https://img.shields.io/npm/v/@steipete/oracle?style=for-the-badge&logo=npm&logoColor=white" alt="npm version"></a>
-  <a href="https://github.com/felix-huber/oracle/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/felix-huber/oracle/ci.yml?branch=main&style=for-the-badge&label=tests" alt="CI Status"></a>
+  <a href="https://github.com/felix-huber/oracle/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/felix-huber/oracle/ci.yml?branch=main&style=for-the-badge&label=lint" alt="Lint Status"></a>
+  <a href="https://github.com/felix-huber/oracle/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/felix-huber/oracle/ci.yml?branch=main&style=for-the-badge&label=tests" alt="Test Status"></a>
+  <a href="https://github.com/felix-huber/oracle/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/felix-huber/oracle/ci.yml?branch=main&style=for-the-badge&label=typecheck" alt="Typecheck Status"></a>
   <a href="https://github.com/felix-huber/oracle"><img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-blue?style=for-the-badge" alt="Platforms"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"></a>
 </p>
@@ -99,6 +101,19 @@ npx -y @steipete/oracle oracle-mcp
 - File safety: globs/excludes, size guards, `--files-report`.
 - Sessions you can replay (`oracle status`, `oracle session <id> --render`).
 - Session logs and bundles live in `~/.oracle/sessions` (override with `ORACLE_HOME_DIR`).
+
+## Fork differences (felix-huber)
+
+This fork is tuned for long‑running Pro sessions and parallel manual‑login runs.
+
+Key differences vs upstream:
+- **Prompt submission targets the visible composer** (ProseMirror), not a hidden draft textarea. This fixes the “Prompt did not appear in conversation” failure.
+- **Manual‑login runs are serialized** with a profile lock, so parallel runs share one Chrome profile without racing.
+- **Shared manual‑login Chrome is strict about tab isolation** (no fallback to the default tab), which avoids cross‑run interference.
+
+Usage differences:
+- For parallel browser runs, add `--browser-profile-lock-timeout 10m` (or set `browser.profileLockTimeoutMs` in `~/.oracle/config.json`) so runs queue at send time.
+- Keep `--browser-reuse-wait 10s` when sharing a single manual‑login Chrome across runs.
 
 ## Browser auto-reattach (long Pro runs)
 
