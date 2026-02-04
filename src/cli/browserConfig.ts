@@ -39,6 +39,8 @@ export interface BrowserFlagOptions {
   browserInputTimeout?: string;
   browserRecheckDelay?: string;
   browserRecheckTimeout?: string;
+  browserReuseWait?: string;
+  browserProfileLockTimeout?: string;
   browserAutoReattachDelay?: string;
   browserAutoReattachInterval?: string;
   browserAutoReattachTimeout?: string;
@@ -143,6 +145,10 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
       : undefined,
     assistantRecheckTimeoutMs: options.browserRecheckTimeout
       ? parseDuration(options.browserRecheckTimeout, DEFAULT_BROWSER_RECHECK_TIMEOUT_MS)
+      : undefined,
+    reuseChromeWaitMs: options.browserReuseWait ? parseDuration(options.browserReuseWait, 0) : undefined,
+    profileLockTimeoutMs: options.browserProfileLockTimeout
+      ? parseDuration(options.browserProfileLockTimeout, 0)
       : undefined,
     autoReattachDelayMs: options.browserAutoReattachDelay
       ? parseDuration(options.browserAutoReattachDelay, 0)

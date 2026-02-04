@@ -116,6 +116,7 @@ interface CliOptions extends OptionValues {
   browserUrl?: string;
   browserTimeout?: string;
   browserInputTimeout?: string;
+  browserProfileLockTimeout?: string;
   browserCookieWait?: string;
   browserNoCookieSync?: boolean;
   browserInlineCookiesFile?: string;
@@ -395,6 +396,18 @@ program
     new Option(
       '--browser-recheck-timeout <ms|s|m|h>',
       'Time budget for the delayed recheck attempt (default 120s).',
+    ).hideHelp(),
+  )
+  .addOption(
+    new Option(
+      '--browser-reuse-wait <ms|s|m|h>',
+      'Wait for a shared Chrome profile to appear before launching a new one (helps parallel runs).',
+    ).hideHelp(),
+  )
+  .addOption(
+    new Option(
+      '--browser-profile-lock-timeout <ms|s|m|h>',
+      'Wait for the shared manual-login profile lock before sending (serializes parallel runs).',
     ).hideHelp(),
   )
   .addOption(
@@ -1417,6 +1430,8 @@ function printDebugHelp(cliName: string): void {
     ['--browser-input-timeout <ms|s|m>', 'Cap how long we wait for the composer textarea.'],
     ['--browser-recheck-delay <ms|s|m|h>', 'After timeout, wait then revisit the conversation to retry capture.'],
     ['--browser-recheck-timeout <ms|s|m|h>', 'Time budget for the delayed recheck attempt.'],
+    ['--browser-reuse-wait <ms|s|m|h>', 'Wait for a shared Chrome profile before launching (parallel runs).'],
+    ['--browser-profile-lock-timeout <ms|s|m|h>', 'Wait for the manual-login profile lock before sending.'],
     ['--browser-auto-reattach-delay <ms|s|m|h>', 'Delay before periodic auto-reattach attempts after a timeout.'],
     ['--browser-auto-reattach-interval <ms|s|m|h>', 'Interval between auto-reattach attempts (0 disables).'],
     ['--browser-auto-reattach-timeout <ms|s|m|h>', 'Time budget for each auto-reattach attempt.'],

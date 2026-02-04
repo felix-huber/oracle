@@ -13,6 +13,8 @@ export interface BrowserDefaultsOptions {
   browserInputTimeout?: string | number;
   browserRecheckDelay?: string | number;
   browserRecheckTimeout?: string | number;
+  browserReuseWait?: string | number;
+  browserProfileLockTimeout?: string | number;
   browserAutoReattachDelay?: string | number;
   browserAutoReattachInterval?: string | number;
   browserAutoReattachTimeout?: string | number;
@@ -74,6 +76,12 @@ export function applyBrowserDefaultsFromConfig(
   }
   if (isUnset('browserRecheckTimeout') && typeof browser.assistantRecheckTimeoutMs === 'number') {
     options.browserRecheckTimeout = String(browser.assistantRecheckTimeoutMs);
+  }
+  if (isUnset('browserReuseWait') && typeof browser.reuseChromeWaitMs === 'number') {
+    options.browserReuseWait = String(browser.reuseChromeWaitMs);
+  }
+  if (isUnset('browserProfileLockTimeout') && typeof browser.profileLockTimeoutMs === 'number') {
+    options.browserProfileLockTimeout = String(browser.profileLockTimeoutMs);
   }
   if (isUnset('browserAutoReattachDelay') && typeof browser.autoReattachDelayMs === 'number') {
     options.browserAutoReattachDelay = String(browser.autoReattachDelayMs);

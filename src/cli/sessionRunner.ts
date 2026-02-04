@@ -649,8 +649,6 @@ async function autoReattachUntilComplete({
           usage: {
             inputTokens: 0,
             outputTokens,
-            reasoningTokens: 0,
-            totalTokens: outputTokens,
           },
           characters: answerText.length,
         },

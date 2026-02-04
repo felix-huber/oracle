@@ -41,8 +41,10 @@ import { CHATGPT_URL, CONVERSATION_TURN_SELECTOR, DEFAULT_MODEL_STRATEGY } from 
 import type { LaunchedChrome } from 'chrome-launcher';
 import { BrowserAutomationError } from '../oracle/errors.js';
 import { alignPromptEchoPair, buildPromptEchoMatcher } from './reattachHelpers.js';
+import type { ProfileRunLock } from './profileState.js';
 import {
   cleanupStaleProfileState,
+  acquireProfileRunLock,
   readChromePid,
   readDevToolsPort,
   shouldCleanupManualLoginProfileState,
@@ -144,7 +146,9 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
   }
 
   const effectiveKeepBrowser = Boolean(config.keepBrowser);
-  const reusedChrome = manualLogin ? await maybeReuseRunningChrome(userDataDir, logger) : null;
+  const reusedChrome = manualLogin
+    ? await maybeReuseRunningChrome(userDataDir, logger, { waitForPortMs: config.reuseChromeWaitMs })
+    : null;
   const chrome =
     reusedChrome ??
     (await launchChrome(
@@ -188,7 +192,12 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
 
   try {
     try {
-      const connection = await connectWithNewTab(chrome.port, logger, undefined, chromeHost);
+      const strictTabIsolation = Boolean(manualLogin && reusedChrome);
+      const connection = await connectWithNewTab(chrome.port, logger, undefined, chromeHost, {
+        fallbackToDefault: !strictTabIsolation,
+        retries: strictTabIsolation ? 3 : 0,
+        retryDelayMs: 500,
+      });
       client = connection.client;
       isolatedTargetId = connection.targetId ?? null;
     } catch (error) {
@@ -421,6 +430,21 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
         }),
       );
     }
+    const profileLockTimeoutMs = manualLogin ? (config.profileLockTimeoutMs ?? 0) : 0;
+    let profileLock: ProfileRunLock | null = null;
+    const acquireProfileLockIfNeeded = async () => {
+      if (profileLockTimeoutMs <= 0) return;
+      profileLock = await acquireProfileRunLock(userDataDir, {
+        timeoutMs: profileLockTimeoutMs,
+        logger,
+      });
+    };
+    const releaseProfileLockIfHeld = async () => {
+      if (!profileLock) return;
+      const handle = profileLock;
+      profileLock = null;
+      await handle.release().catch(() => undefined);
+    };
     const submitOnce = async (prompt: string, submissionAttachments: BrowserAttachment[]) => {
       const baselineSnapshot = await readAssistantSnapshot(Runtime).catch(() => null);
       const baselineAssistantText =
@@ -505,27 +529,32 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
 
     let baselineTurns: number | null = null;
     let baselineAssistantText: string | null = null;
+    await acquireProfileLockIfNeeded();
     try {
-      const submission = await raceWithDisconnect(submitOnce(promptText, attachments));
-      baselineTurns = submission.baselineTurns;
-      baselineAssistantText = submission.baselineAssistantText;
-    } catch (error) {
-      const isPromptTooLarge =
-        error instanceof BrowserAutomationError &&
-        (error.details as { code?: string } | undefined)?.code === 'prompt-too-large';
-      if (fallbackSubmission && isPromptTooLarge) {
-        // Learned: when prompts truncate, retry with file uploads so the UI receives the full content.
-        logger('[browser] Inline prompt too large; retrying with file uploads.');
-        await raceWithDisconnect(clearPromptComposer(Runtime, logger));
-        await raceWithDisconnect(ensurePromptReady(Runtime, config.inputTimeoutMs, logger));
-        const submission = await raceWithDisconnect(
-          submitOnce(fallbackSubmission.prompt, fallbackSubmission.attachments),
-        );
+      try {
+        const submission = await raceWithDisconnect(submitOnce(promptText, attachments));
         baselineTurns = submission.baselineTurns;
         baselineAssistantText = submission.baselineAssistantText;
-      } else {
-        throw error;
+      } catch (error) {
+        const isPromptTooLarge =
+          error instanceof BrowserAutomationError &&
+          (error.details as { code?: string } | undefined)?.code === 'prompt-too-large';
+        if (fallbackSubmission && isPromptTooLarge) {
+          // Learned: when prompts truncate, retry with file uploads so the UI receives the full content.
+          logger('[browser] Inline prompt too large; retrying with file uploads.');
+          await raceWithDisconnect(clearPromptComposer(Runtime, logger));
+          await raceWithDisconnect(ensurePromptReady(Runtime, config.inputTimeoutMs, logger));
+          const submission = await raceWithDisconnect(
+            submitOnce(fallbackSubmission.prompt, fallbackSubmission.attachments),
+          );
+          baselineTurns = submission.baselineTurns;
+          baselineAssistantText = submission.baselineAssistantText;
+        } else {
+          throw error;
+        }
       }
+    } finally {
+      await releaseProfileLockIfHeld();
     }
     stopThinkingMonitor = startThinkingStatusMonitor(Runtime, logger, options.verbose ?? false);
     // Helper to normalize text for echo detection (collapse whitespace, lowercase)
@@ -1059,11 +1088,24 @@ async function _assertNavigatedToHttp(
   });
 }
 
-async function maybeReuseRunningChrome(userDataDir: string, logger: BrowserLogger): Promise<LaunchedChrome | null> {
-  const port = await readDevToolsPort(userDataDir);
+async function maybeReuseRunningChrome(
+  userDataDir: string,
+  logger: BrowserLogger,
+  options: { waitForPortMs?: number; probe?: typeof verifyDevToolsReachable } = {},
+): Promise<LaunchedChrome | null> {
+  const waitForPortMs = Math.max(0, options.waitForPortMs ?? 0);
+  let port = await readDevToolsPort(userDataDir);
+  if (!port && waitForPortMs > 0) {
+    const deadline = Date.now() + waitForPortMs;
+    logger(`Waiting up to ${formatElapsed(waitForPortMs)} for shared Chrome to appear...`);
+    while (!port && Date.now() < deadline) {
+      await delay(250);
+      port = await readDevToolsPort(userDataDir);
+    }
+  }
   if (!port) return null;
 
-  const probe = await verifyDevToolsReachable({ port });
+  const probe = await (options.probe ?? verifyDevToolsReachable)({ port });
   if (!probe.ok) {
     logger(`DevToolsActivePort found for ${userDataDir} but unreachable (${probe.error}); launching new Chrome.`);
     // Safe cleanup: remove stale DevToolsActivePort; only remove lock files if this was an Oracle-owned pid that died.
@@ -1570,6 +1612,14 @@ export {
   uploadAttachmentFile,
   waitForAttachmentCompletion,
 } from './pageActions.js';
+
+export async function maybeReuseRunningChromeForTest(
+  userDataDir: string,
+  logger: BrowserLogger,
+  options: { waitForPortMs?: number; probe?: typeof verifyDevToolsReachable } = {},
+): Promise<LaunchedChrome | null> {
+  return maybeReuseRunningChrome(userDataDir, logger, options);
+}
 
 function isWebSocketClosureError(error: Error): boolean {
   const message = error.message.toLowerCase();
