@@ -207,7 +207,11 @@ async function testChatGPTUrlAccess(): Promise<void> {
       // Look for main content areas
       document.querySelectorAll('main, [role="main"], article, .conversation, [data-testid]').forEach(el => {
         const text = el.textContent?.trim().substring(0, 200);
-        if (text) elements.push(`${el.tagName}${el.id ? '#' + el.id : ''}${el.className ? '.' + el.className.split(' ')[0] : ''}: ${text}`);
+        if (text) {
+          const idSuffix = el.id ? `#${el.id}` : '';
+          const classSuffix = el.className ? `.${el.className.split(' ')[0]}` : '';
+          elements.push(`${el.tagName}${idSuffix}${classSuffix}: ${text}`);
+        }
       });
       // Look for buttons and forms
       document.querySelectorAll('button, input, form, [role="button"]').forEach(el => {
@@ -219,7 +223,9 @@ async function testChatGPTUrlAccess(): Promise<void> {
     results.initialNavigation.visibleElements = visibleElements;
 
     console.log('\nVisible Elements:');
-    visibleElements.forEach(el => console.log(`  - ${el.substring(0, 100)}`));
+    visibleElements.forEach(el => {
+      console.log(`  - ${el.substring(0, 100)}`);
+    });
 
     // Check session storage
     console.log('\n[4/5] Checking session persistence state...');
@@ -294,11 +300,13 @@ async function testChatGPTUrlAccess(): Promise<void> {
     
     if (results.afterWait.changesFromInitial.length > 0) {
       console.log('\nChanges from initial load:');
-      results.afterWait.changesFromInitial.forEach(change => console.log(`  - ${change}`));
+      results.afterWait.changesFromInitial.forEach(change => {
+        console.log(`  - ${change}`);
+      });
     }
 
     // Final analysis
-    console.log('\n' + '='.repeat(80));
+    console.log(`\n${'='.repeat(80)}`);
     console.log('FINDINGS & RECOMMENDATIONS');
     console.log('='.repeat(80));
 
@@ -353,7 +361,7 @@ async function testChatGPTUrlAccess(): Promise<void> {
     await page.screenshot({ path: screenshotPath, fullPage: true });
     console.log(`📸 Screenshot saved to: ${screenshotPath}`);
 
-    console.log('\n' + '='.repeat(80));
+    console.log(`\n${'='.repeat(80)}`);
     console.log('TEST COMPLETE');
     console.log('='.repeat(80));
 

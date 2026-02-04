@@ -592,7 +592,7 @@ async function autoReattachUntilComplete({
   logger.verbose = true;
 
   let attempt = 0;
-  while (true) {
+  for (;;) {
     attempt += 1;
     log(dim(`Auto-reattach attempt ${attempt}...`));
     try {

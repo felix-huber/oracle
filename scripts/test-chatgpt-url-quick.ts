@@ -105,7 +105,7 @@ async function test(): Promise<void> {
     console.log(`\n📸 Screenshot: ${screenshotPath}`);
 
     // Summary
-    console.log('\n' + '='.repeat(80));
+    console.log(`\n${'='.repeat(80)}`);
     console.log('SUMMARY');
     console.log('='.repeat(80));
     

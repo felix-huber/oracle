@@ -127,13 +127,16 @@ export async function acquireProfileRunLock(
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     return null;
   }
-  const pollMs = Number.isFinite(options.pollMs) && (options.pollMs ?? 0) > 0 ? options.pollMs! : 1000;
+  const pollMs =
+    typeof options.pollMs === 'number' && Number.isFinite(options.pollMs) && options.pollMs > 0
+      ? options.pollMs
+      : 1000;
   const lockPath = path.join(userDataDir, ORACLE_PROFILE_LOCK_FILENAME);
   const lockId = randomUUID();
   const startedAt = Date.now();
   let warned = false;
 
-  while (true) {
+  for (;;) {
     try {
       const payload: ProfileRunLockRecord = {
         pid: process.pid,

@@ -64,7 +64,9 @@ async function test(): Promise<void> {
     });
     
     console.log(`\nError/Alert Messages:`);
-    errorBanner.forEach(msg => console.log(`  - ${msg}`));
+    errorBanner.forEach(msg => {
+      console.log(`  - ${msg}`);
+    });
 
     // Check URL in page for any redirect info
     const pageState = await page.evaluate(() => {
@@ -116,7 +118,9 @@ async function test(): Promise<void> {
 
     if (redirectHints.length > 0) {
       console.log(`\nRedirect Hints Found:`);
-      redirectHints.forEach(h => console.log(`  - ${h}`));
+      redirectHints.forEach(h => {
+        console.log(`  - ${h}`);
+      });
     }
 
     console.log('\n[2/4] Simulating page reload (as recheck would do)...');
@@ -133,7 +137,7 @@ async function test(): Promise<void> {
     console.log(`\n📸 Screenshot: ${screenshotPath}`);
 
     // Summary
-    console.log('\n' + '='.repeat(80));
+    console.log(`\n${'='.repeat(80)}`);
     console.log('KEY FINDINGS');
     console.log('='.repeat(80));
     
