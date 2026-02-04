@@ -383,7 +383,37 @@ program
   .addOption(new Option('--browser-url <url>', `Alias for --chatgpt-url (default ${CHATGPT_URL}).`).hideHelp())
   .addOption(new Option('--browser-timeout <ms|s|m>', 'Maximum time to wait for an answer (default 1200s / 20m).').hideHelp())
   .addOption(
-    new Option('--browser-input-timeout <ms|s|m>', 'Maximum time to wait for the prompt textarea (default 30s).').hideHelp(),
+    new Option('--browser-input-timeout <ms|s|m>', 'Maximum time to wait for the prompt textarea (default 60s).').hideHelp(),
+  )
+  .addOption(
+    new Option(
+      '--browser-recheck-delay <ms|s|m|h>',
+      'After an assistant timeout, wait this long then revisit the conversation to retry capture.',
+    ).hideHelp(),
+  )
+  .addOption(
+    new Option(
+      '--browser-recheck-timeout <ms|s|m|h>',
+      'Time budget for the delayed recheck attempt (default 120s).',
+    ).hideHelp(),
+  )
+  .addOption(
+    new Option(
+      '--browser-auto-reattach-delay <ms|s|m|h>',
+      'Delay before starting periodic auto-reattach attempts after a timeout.',
+    ).hideHelp(),
+  )
+  .addOption(
+    new Option(
+      '--browser-auto-reattach-interval <ms|s|m|h>',
+      'Interval between auto-reattach attempts (0 disables).',
+    ).hideHelp(),
+  )
+  .addOption(
+    new Option(
+      '--browser-auto-reattach-timeout <ms|s|m|h>',
+      'Time budget for each auto-reattach attempt (default 120s).',
+    ).hideHelp(),
   )
   .addOption(
     new Option(
@@ -1385,6 +1415,11 @@ function printDebugHelp(cliName: string): void {
     ['--browser-url <url>', 'Alias for --chatgpt-url.'],
     ['--browser-timeout <ms|s|m>', 'Cap total wait time for the assistant response.'],
     ['--browser-input-timeout <ms|s|m>', 'Cap how long we wait for the composer textarea.'],
+    ['--browser-recheck-delay <ms|s|m|h>', 'After timeout, wait then revisit the conversation to retry capture.'],
+    ['--browser-recheck-timeout <ms|s|m|h>', 'Time budget for the delayed recheck attempt.'],
+    ['--browser-auto-reattach-delay <ms|s|m|h>', 'Delay before periodic auto-reattach attempts after a timeout.'],
+    ['--browser-auto-reattach-interval <ms|s|m|h>', 'Interval between auto-reattach attempts (0 disables).'],
+    ['--browser-auto-reattach-timeout <ms|s|m|h>', 'Time budget for each auto-reattach attempt.'],
     ['--browser-cookie-wait <ms|s|m>', 'Wait before retrying cookie sync when Chrome cookies are empty or locked.'],
     ['--browser-no-cookie-sync', 'Skip copying cookies from your main profile.'],
     ['--browser-manual-login', 'Skip cookie copy; reuse a persistent automation profile and log in manually.'],

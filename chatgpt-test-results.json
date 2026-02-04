@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-02-03T00:00:36.738Z",
+  "targetUrl": "https://chatgpt.com/c/69813556-3bcc-838f-9934-b19086cd9311",
+  "actualUrl": "https://chatgpt.com/",
+  "title": "ChatGPT",
+  "requiresAuth": true,
+  "isHomepage": true,
+  "hasConversationId": true,
+  "cookieCount": 11,
+  "finding": "Fresh profile cannot access conversation - requires authentication"
+}

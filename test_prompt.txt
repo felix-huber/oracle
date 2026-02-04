@@ -1,0 +1,21 @@
+Please review this browser automation code for the Oracle CLI. Focus on:
+
+1) The delayed recheck feature for long Pro runs
+   - How `assistantRecheckDelayMs` and `assistantRecheckTimeoutMs` work in `src/browser/index.ts`
+   - The `attemptAssistantRecheck()` function and its error handling
+   - The interaction between `waitForAssistantResponseWithReload()` and the recheck logic
+
+2) Error handling and session recovery
+   - The reattachment mechanism in `src/browser/reattach.ts` and `src/browser/reattachHelpers.ts`
+   - Chrome lifecycle management in `src/browser/chromeLifecycle.ts`
+   - Signal handling and cleanup in `registerTerminationHooks()`
+   - WebSocket closure detection and `connectionClosedUnexpectedly` tracking
+
+3) Any potential race conditions or edge cases
+   - The dual-path response detection (DOM observer + snapshot poller) in `src/browser/actions/assistantResponse.ts`
+   - The prompt echo detection and recovery logic
+   - The thinking status monitor and its interaction with response capture
+   - Attachment upload timing and verification
+   - Session persistence during mid-run disconnects
+
+Please identify any bugs, potential improvements, or areas where the code could be more robust.
