@@ -6,9 +6,9 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@steipete/oracle"><img src="https://img.shields.io/npm/v/@steipete/oracle?style=for-the-badge&logo=npm&logoColor=white" alt="npm version"></a>
-  <a href="https://github.com/felix-huber/oracle/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/felix-huber/oracle/ci.yml?branch=main&style=for-the-badge&label=lint" alt="Lint Status"></a>
-  <a href="https://github.com/felix-huber/oracle/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/felix-huber/oracle/ci.yml?branch=main&style=for-the-badge&label=tests" alt="Test Status"></a>
-  <a href="https://github.com/felix-huber/oracle/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/felix-huber/oracle/ci.yml?branch=main&style=for-the-badge&label=typecheck" alt="Typecheck Status"></a>
+  <a href="https://github.com/felix-huber/oracle/actions/workflows/lint.yml"><img src="https://img.shields.io/github/actions/workflow/status/felix-huber/oracle/lint.yml?branch=main&style=for-the-badge&label=lint" alt="Lint Status"></a>
+  <a href="https://github.com/felix-huber/oracle/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/felix-huber/oracle/test.yml?branch=main&style=for-the-badge&label=tests" alt="Test Status"></a>
+  <a href="https://github.com/felix-huber/oracle/actions/workflows/typecheck.yml"><img src="https://img.shields.io/github/actions/workflow/status/felix-huber/oracle/typecheck.yml?branch=main&style=for-the-badge&label=typecheck" alt="Typecheck Status"></a>
   <a href="https://github.com/felix-huber/oracle"><img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-blue?style=for-the-badge" alt="Platforms"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"></a>
 </p>
