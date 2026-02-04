@@ -292,10 +292,16 @@ export function pickTagline(options: TaglineOptions = {}): string {
 export function formatIntroLine(version: string, options: TaglineOptions = {}): string {
   const tagline = pickTagline(options);
   const rich = options.richTty ?? true;
+  const oracleName = formatOracleName();
   if (rich && chalk.level > 0) {
-    return `${chalk.bold('🧿 oracle')} ${version} — ${tagline}`;
+    return `${chalk.bold(oracleName)} ${version} — ${tagline}`;
   }
-  return `🧿 oracle ${version} — ${tagline}`;
+  return `${oracleName} ${version} — ${tagline}`;
+}
+
+export function formatOracleName(): string {
+  const label = (process.env.ORACLE_FORK_LABEL ?? 'felix-huber').trim();
+  return label ? `🧿 oracle (${label})` : '🧿 oracle';
 }
 
 export { TAGLINES };

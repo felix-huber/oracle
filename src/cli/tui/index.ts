@@ -15,6 +15,7 @@ import { buildBrowserConfig, resolveBrowserModelLabel } from '../browserConfig.j
 import { resolveNotificationSettings } from '../notifier.js';
 import { loadUserConfig, type UserConfig } from '../../config.js';
 import { formatTokenCount } from '../../oracle/runUtils.js';
+import { formatOracleName } from '../tagline.js';
 
 const isTty = (): boolean => Boolean(process.stdout.isTTY && chalk.level > 0);
 const dim = (text: string): string => (isTty() ? kleur.dim(text) : text);
@@ -37,10 +38,11 @@ export async function launchTui({ version, printIntro = true }: LaunchTuiOptions
   let pagingFailures = 0;
   let exitMessageShown = false;
   if (printIntro) {
+    const oracleName = formatOracleName();
     if (rich) {
-      console.log(chalk.bold('🧿 oracle'), `${version}`, dim('— Whispering your tokens to the silicon sage'));
+      console.log(chalk.bold(oracleName), `${version}`, dim('— Whispering your tokens to the silicon sage'));
     } else {
-      console.log(`🧿 oracle ${version} — Whispering your tokens to the silicon sage`);
+      console.log(`${oracleName} ${version} — Whispering your tokens to the silicon sage`);
     }
   }
   console.log('');
