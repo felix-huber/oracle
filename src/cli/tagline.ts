@@ -300,7 +300,7 @@ export function formatIntroLine(version: string, options: TaglineOptions = {}): 
 }
 
 export function formatOracleName(): string {
-  const label = (process.env.ORACLE_FORK_LABEL ?? 'felix-huber').trim();
+  const label = (process.env.ORACLE_FORK_LABEL ?? '').trim();
   return label ? `🧿 oracle (${label})` : '🧿 oracle';
 }
 
